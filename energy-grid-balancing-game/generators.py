@@ -5,24 +5,36 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-# convert units to SI - https://atb.nrel.gov/electricity/2022/index
+# convert units to SI
+# capex and opex https://atb.nrel.gov/electricity/2022/index
+# eu carbon pricing 86 EUR/TCO2e Jan 02 '23 https://www.statista.com/statistics/1322214/carbon-prices-european-union-emission-trading-scheme/
+# norway carbon tax from page 55 of https://www.norskindustri.no/siteassets/dokumenter/rapporter-og-brosjyrer/energy-transition-norway/2023/energy-transition-norway-2023.pdf
 USD_KWY = 10.42 / (1e3 * 365.25 * 24 * 3600)
 USD_KW = 10.42 / (1e3)
 GRAM_MWH = 0.001 / (1e6 * 3600)
-CARBON_TAX = 11.34 * (76 + 80) / 1000
+CARBON_TAX = 11.34 * (86 + 100) / 1000
 
 
 class BaseGenerator:
     def __init__(
-        self, installed_capacity, min_output, co2_opex, nok_opex, nok_capex, time_steps
+        self,
+        installed_capacity,
+        min_output,
+        co2_opex,
+        nok_opex,
+        nok_capex,
+        carbon_tax,
+        time_steps,
     ):
         """
         Initialise values for sinusoidal generator
             Parameters:
+                installed_capacity (float, int): Installed capacity [W]
+                min_output (float): Proportion of available power that must be generated [-]
                 co2_opex (float, int): CO2e per unit energy [kg/J]
                 nok_opex (float, int): NOK per unit energy [NOK/J]
                 nok_capex (float, int): NOK per installed capacity [NOK/W/WEEK]
-                min_output (float): Proportion of available power that must be generated [-]
+                carbon_tax (bool): Whether or not subject to carbon tax
                 time_steps (list[float]): Time range [hours]
         """
         # capcity constraints
@@ -33,9 +45,16 @@ class BaseGenerator:
         self.co2_opex = co2_opex
         self.nok_opex = nok_opex
         self.nok_capex = nok_capex
+        self.carbon_tax = carbon_tax
 
         # time constants
         self.time_steps = time_steps
+
+    def calculate_max_power_profile(self):
+        """
+        Calculate maximum power profile
+        """
+        self.max_power = {k: self.installed_capacity for k in self.time_steps}
 
     def calculate_min_power_profile(self):
         """
@@ -78,6 +97,7 @@ class SolarGenerator(BaseGenerator):
         co2_opex=41000 * GRAM_MWH,
         nok_opex=19 * USD_KWY,
         nok_capex=1784 * USD_KW / 30 / 52,
+        carbon_tax=False,
         min_output=1.0,
         range_=12,
         peak_time=12,
@@ -88,12 +108,12 @@ class SolarGenerator(BaseGenerator):
             co2_opex=co2_opex,
             nok_opex=nok_opex,
             nok_capex=nok_capex,
+            carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
         """
         Initialise technology specific values
             Parameters:
-                installed_capacity (float, int): Installed capacity [W]
                 range_ (float, int): Duration of sunlight [mins]
                 peak_time (float, int): Time of day that peak generation occurs [mins]
         """
@@ -102,7 +122,6 @@ class SolarGenerator(BaseGenerator):
         self.range = range_
         self.peak_time = peak_time
         self.daily_capcity = np.random.uniform(0.6, 1, int(self.time_steps.max() / 24))
-        self.carbon_tax = False
 
         # calculate values
         self.calculate_max_power_profile()
@@ -123,44 +142,6 @@ class SolarGenerator(BaseGenerator):
         self.max_power = {k: v for k, v in zip(self.time_steps, max_power)}
 
 
-class NuclearGenerator(BaseGenerator):
-    def __init__(
-        self,
-        time_steps,
-        installed_capacity,
-        co2_opex=24000 * GRAM_MWH,
-        nok_opex=(146 + 114) / 2 * USD_KWY,
-        nok_capex=(7989 + 7442) / 2 * USD_KW / 50 / 52,
-        min_output=1.0,
-    ):
-        super().__init__(
-            installed_capacity=installed_capacity,
-            min_output=min_output,
-            co2_opex=co2_opex,
-            nok_opex=nok_opex,
-            nok_capex=nok_capex,
-            time_steps=time_steps,
-        )
-        """
-        Initialise technology specific values
-            Parameters:
-                installed_capacity (float, int): Peak generation power output [W]
-        """
-
-        # technology specific constants
-        self.carbon_tax = False
-
-        # calculate values
-        self.calculate_max_power_profile()
-        self.calculate_min_power_profile()
-
-    def calculate_max_power_profile(self):
-        # calculate daily power profile
-        self.max_power = {}
-        for t in self.time_steps:
-            self.max_power[t] = self.installed_capacity
-
-
 class WindGenerator(BaseGenerator):
     def __init__(
         self,
@@ -169,6 +150,7 @@ class WindGenerator(BaseGenerator):
         co2_opex=11000 * GRAM_MWH,
         nok_opex=(116 + 75) / 2 * USD_KWY,
         nok_capex=(5908 + 3285) / 2 * USD_KW / 25 / 52,
+        carbon_tax=False,
         min_output=1.0,
     ):
         super().__init__(
@@ -177,16 +159,12 @@ class WindGenerator(BaseGenerator):
             co2_opex=co2_opex,
             nok_opex=nok_opex,
             nok_capex=nok_capex,
+            carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
         """
         Initialise technology specific values
-            Parameters:
-                installed_capacity (float, int): Peak generation power output [W]
         """
-
-        # technology specific constants
-        self.carbon_tax = False
 
         # calculate values
         self.calculate_max_power_profile()
@@ -200,7 +178,7 @@ class WindGenerator(BaseGenerator):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         wind = pd.read_csv(
             dir_path
-            + "/../data/Solar_and_WindOnOffshore__watt_produced_per_watt_installed.csv"
+            + "/data/Solar_and_WindOnOffshore__watt_produced_per_watt_installed.csv"
         )
         offset = random.randrange(0, len(wind) - 168, 24)
 
@@ -211,6 +189,35 @@ class WindGenerator(BaseGenerator):
         ).to_dict()
 
 
+class NuclearGenerator(BaseGenerator):
+    def __init__(
+        self,
+        time_steps,
+        installed_capacity,
+        co2_opex=24000 * GRAM_MWH,
+        nok_opex=(146 + 114) / 2 * USD_KWY,
+        nok_capex=(7989 + 7442) / 2 * USD_KW / 50 / 52,
+        carbon_tax=False,
+        min_output=1.0,
+    ):
+        super().__init__(
+            installed_capacity=installed_capacity,
+            min_output=min_output,
+            co2_opex=co2_opex,
+            nok_opex=nok_opex,
+            nok_capex=nok_capex,
+            carbon_tax=carbon_tax,
+            time_steps=time_steps,
+        )
+        """
+        Initialise technology specific values
+        """
+
+        # calculate values
+        self.calculate_max_power_profile()
+        self.calculate_min_power_profile()
+
+
 class OilGenerator(BaseGenerator):
     def __init__(
         self,
@@ -219,6 +226,7 @@ class OilGenerator(BaseGenerator):
         co2_opex=780_000 * GRAM_MWH,
         nok_opex=(141 + 74) / 2 * USD_KWY * 1.15,
         nok_capex=(5327 + 3075) / 2 * USD_KW * 1.15 / 40 / 52,
+        carbon_tax=True,
         min_output=0.1,
     ):
         super().__init__(
@@ -227,26 +235,16 @@ class OilGenerator(BaseGenerator):
             co2_opex=co2_opex,
             nok_opex=nok_opex,
             nok_capex=nok_capex,
+            carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
         """
         Initialise technology specific values
-            Parameters:
-                installed_capacity (float, int): Peak generation power output [W]
         """
-
-        # technology specific constants
-        self.carbon_tax = True
 
         # calculate values
         self.calculate_max_power_profile()
         self.calculate_min_power_profile()
-
-    def calculate_max_power_profile(self):
-        # calculate daily power profile
-        self.max_power = {}
-        for t in self.time_steps:
-            self.max_power[t] = self.installed_capacity
 
 
 class CoalGenerator(BaseGenerator):
@@ -257,6 +255,7 @@ class CoalGenerator(BaseGenerator):
         co2_opex=980_000 * GRAM_MWH,
         nok_opex=(141 + 74) / 2 * USD_KWY,
         nok_capex=(5327 + 3075) / 2 * USD_KW / 40 / 52,
+        carbon_tax=True,
         min_output=0.32,
     ):
         super().__init__(
@@ -265,26 +264,16 @@ class CoalGenerator(BaseGenerator):
             co2_opex=co2_opex,
             nok_opex=nok_opex,
             nok_capex=nok_capex,
+            carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
         """
         Initialise technology specific values
-            Parameters:
-                installed_capacity (float, int): Peak generation power output [W]
         """
-
-        # technology specific constants
-        self.carbon_tax = True
 
         # calculate values
         self.calculate_max_power_profile()
         self.calculate_min_power_profile()
-
-    def calculate_max_power_profile(self):
-        # calculate daily power profile
-        self.max_power = {}
-        for t in self.time_steps:
-            self.max_power[t] = self.installed_capacity
 
 
 class GasGenerator(BaseGenerator):
@@ -295,6 +284,7 @@ class GasGenerator(BaseGenerator):
         co2_opex=430_000 * GRAM_MWH,
         nok_opex=(59 + 21) / 2 * USD_KWY,
         nok_capex=(2324 + 922) / 2 * USD_KW / 30 / 52,
+        carbon_tax=True,
         min_output=0.35,
     ):
         super().__init__(
@@ -303,23 +293,13 @@ class GasGenerator(BaseGenerator):
             co2_opex=co2_opex,
             nok_opex=nok_opex,
             nok_capex=nok_capex,
+            carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
         """
         Initialise technology specific values
-            Parameters:
-                installed_capacity (float, int): Peak generation power output [W]
         """
-
-        # technology specific constants
-        self.carbon_tax = True
 
         # calculate values
         self.calculate_max_power_profile()
         self.calculate_min_power_profile()
-
-    def calculate_max_power_profile(self):
-        # calculate daily power profile
-        self.max_power = {}
-        for t in self.time_steps:
-            self.max_power[t] = self.installed_capacity

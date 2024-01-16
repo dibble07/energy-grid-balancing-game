@@ -6,7 +6,7 @@ import altair as alt
 import numpy as np
 from data.get_demand_curve import get_demand_curve
 from calculate_production import calculate_cost_score, calculate_production
-from classes.generators import (
+from generators import (
     CoalGenerator,
     GasGenerator,
     NuclearGenerator,

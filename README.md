@@ -1,6 +1,5 @@
-# hackaton-energy-game
+# Energy Grid Balancing Game
+Game to balance energy generators in the electricity grid
 
-### run streamlit app
-```python
-streamlit run streamlit_app.py
-```
+## Run game
+CLI command: ```streamlit run energy-grid-balancing-game/streamlit_app.py```
