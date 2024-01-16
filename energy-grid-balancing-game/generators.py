@@ -178,7 +178,7 @@ class WindGenerator(BaseGenerator):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         wind = pd.read_csv(
             dir_path
-            + "/../data/Solar_and_WindOnOffshore__watt_produced_per_watt_installed.csv"
+            + "/data/Solar_and_WindOnOffshore__watt_produced_per_watt_installed.csv"
         )
         offset = random.randrange(0, len(wind) - 168, 24)
 
