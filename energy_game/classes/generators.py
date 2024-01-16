@@ -6,11 +6,13 @@ import pandas as pd
 from scipy.stats import norm
 
 # convert units to SI
-# capex and opex from https://atb.nrel.gov/electricity/2022/index
+# capex and opex https://atb.nrel.gov/electricity/2022/index
+# eu carbon pricing 86 EUR/TCO2e Jan 02 '23 https://www.statista.com/statistics/1322214/carbon-prices-european-union-emission-trading-scheme/
+# norway carbon tax from page 55 of https://www.norskindustri.no/siteassets/dokumenter/rapporter-og-brosjyrer/energy-transition-norway/2023/energy-transition-norway-2023.pdf
 USD_KWY = 10.42 / (1e3 * 365.25 * 24 * 3600)
 USD_KW = 10.42 / (1e3)
 GRAM_MWH = 0.001 / (1e6 * 3600)
-CARBON_TAX = 11.34 * (76 + 80) / 1000
+CARBON_TAX = 11.34 * (86 + 100) / 1000
 
 
 class BaseGenerator:
