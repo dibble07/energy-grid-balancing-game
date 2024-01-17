@@ -1,5 +1,11 @@
 Tasks
+- Fix chart
+    - Coloured bit
+    - Size
+    - Axes labels
 - Revert to Euros
+- Curtail renewables
+- Fix colour on installed capac
 - Calculate optimum score
     - Cache value in streamlit
 - Give context to slider values

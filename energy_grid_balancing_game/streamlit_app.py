@@ -1,13 +1,10 @@
 # imports
-import math
-
 import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
-from icecream import ic
 
-from calculate_production import calculate_cost_score, calculate_production
+from gameplay import EnergyMixer
 from generators import (
     CoalGenerator,
     GasGenerator,
@@ -15,24 +12,31 @@ from generators import (
     SolarGenerator,
     WindGenerator,
 )
-from utils import get_demand_curve
 
-# initialise app
-
-## set header
+# set header
 st.header("Energy Grid Game")
 
-## initialise gameplay components
-week = 6
-df_demand = pd.Series(get_demand_curve(week=week)).to_frame("demand") / 1e6
-max_demand = max(df_demand["demand"])
+# initialise gameplay components
+week = np.random.randint(low=1, high=53)
+grid = EnergyMixer(
+    generators={
+        "solar": SolarGenerator,
+        "wind": WindGenerator,
+        "nuclear": NuclearGenerator,
+        "gas": GasGenerator,
+        "coal": CoalGenerator,
+    },
+    week=week,
+)
+max_demand = max(grid.demand.values())
+
+
+## get user inputs
 coal = 0
 gas = 0
 nuclear = 0
 solar = 0
 wind = 0
-
-## initialise user inputs
 with st.sidebar:
     st.subheader("Energy Mix")
     coal = st.number_input("Coal (MW)", value=coal)
@@ -40,78 +44,62 @@ with st.sidebar:
     nuclear = st.number_input("Nuclear (MW)", value=nuclear)
     solar = st.number_input("Solar (MW)", value=solar)
     wind = st.number_input("Wind (MW)", value=wind)
-
-    total_production = coal + gas + nuclear + solar + wind
-    if total_production < math.ceil(max_demand):
-        st.write(f"Installed Capacity: :red[{total_production}]/{max_demand:5.0f}")
-    else:
-        st.write(f"Installed Capacity: :green[{total_production}]/{max_demand:5.0f}")
-
     button_display = st.button("Run Simulation")
+    total_production = coal + gas + nuclear + solar + wind
+    st.write("Installed Capacity: :red[0]/24922")
+    st.write(
+        f"Installed Capacity: :{'red' if total_production < max_demand else 'green'}[{total_production:,.0f}]/{max_demand:,.0f}"
+    )
 
-## run simulation
-demand = df_demand["demand"]
-t = list(demand.to_dict().keys())
-df_prod = pd.DataFrame(index=t)
-
-ENERGY_PRODUCERS = {
-    "solar": SolarGenerator(time_steps=t, installed_capacity=solar, week=week),
-    "wind": WindGenerator(time_steps=t, installed_capacity=wind, week=week),
-    "gas": GasGenerator(time_steps=t, installed_capacity=gas),
-    "coal": CoalGenerator(time_steps=t, installed_capacity=coal),
-    "nuclear": NuclearGenerator(time_steps=t, installed_capacity=nuclear),
-}
-
-PRIORITY_LIST = ["nuclear", "solar", "wind", "gas", "coal"]
-
-df_demand.index.name = "t"
-df_prod = calculate_production(ENERGY_PRODUCERS, df_demand, PRIORITY_LIST)
-co2, nok = calculate_cost_score(df_prod=df_prod, ENERGY_PRODUCERS=ENERGY_PRODUCERS)
+# run simulation
+grid.set_installed_capacity(
+    installed_capacity={
+        "solar": solar * 1e6,
+        "wind": wind * 1e6,
+        "gas": gas * 1e6,
+        "coal": coal * 1e6,
+        "nuclear": nuclear * 1e6,
+    }
+)
+dispatch, _, energy, co2, nok = grid.calculate_dispatch()
+dispatch = pd.DataFrame(dispatch)
 
 ## display score(s)
-cont1 = st.container()
-with cont1:
+energy = sum(energy.values()) / 1e6 / 3600
+co2 = sum(co2.values())
+nok = sum(nok.values())
+with st.container():
     col1, col2, col3 = st.columns(3)
-cont2 = st.container()
-
-with col1:
-    st.write(f"Price score: {nok:9.0f}")
-with col2:
-    st.write(f"CO2 score: {co2:9.0f}")
-with col3:
-    st.write(f"Stability score: {100}")
+    with col1:
+        st.write(f"Cost [NOK/MWh]: {nok/energy:,.2f}")
+    with col2:
+        st.write(f"Emissions [kgCO2e/MWh]: {co2/energy:,.2f}")
+    with col3:
+        st.write(f"Stability score: {100}")
 
 ## display graph
 with st.empty():
-    df_demand["demand"] = np.nan
-    output = df_prod.copy()
-
-    output["wind"] = np.nan
-    output["solar"] = np.nan
-    for hour in range(0, len(demand), 3):
-        df_demand["demand"].iloc[0:hour] = list(demand)[0:hour]
-        output["solar"].iloc[0:hour] = df_prod["solar"].iloc[0:hour]
-        output["wind"].iloc[0:hour] = df_prod["wind"].iloc[0:hour]
+    for i in range(1, len(dispatch)):
+        dispatch_disp = dispatch.copy()
+        dispatch_disp.iloc[i:] = np.nan
+        demand_disp = pd.Series(grid.demand).rename("demand").copy()
+        demand_disp.iloc[i:] = np.nan
 
         st.altair_chart(
             alt.layer(
-                alt.Chart(
-                    pd.melt(output.reset_index(), id_vars=["t"]),
-                    width=640,
-                    height=480,
-                )
+                alt.Chart(pd.melt(dispatch_disp.reset_index(), id_vars=["index"]))
                 .mark_area()
                 .encode(
-                    alt.X("t", title=""),
+                    alt.X("index", title=""),
                     alt.Y("value", title="", stack=True),
                     alt.Color("variable", title="", type="nominal"),
                     opacity={"value": 0.7},
                 )
                 .interactive(),
-                alt.Chart(pd.melt(df_demand.reset_index(), id_vars=["t"]))
+                alt.Chart(pd.melt(demand_disp.reset_index(), id_vars=["index"]))
                 .mark_line()
                 .encode(
-                    alt.X("t", title=""),
+                    alt.X("index", title=""),
                     alt.Y("value", title="", stack=True),
                     alt.Color("variable", title="", type="nominal"),
                     opacity={"value": 0.7},
