@@ -70,10 +70,10 @@ class BaseGenerator:
                 nok (float): total NOK spent [NOK]
         """
         # total power generated
-        time_step = list(set(np.diff(self.time_steps).round(8)))
-        assert len(time_step) == 1
+        time_step = np.unique(np.diff(self.time_steps))
+        assert time_step.size == 1
         time_step = time_step[0]
-        energy_total = sum(power) * time_step * 3600
+        energy_total = sum(power) * time_step.astype("timedelta64[s]").astype(int)
 
         # total costs
         co2 = energy_total * self.co2_opex
@@ -111,6 +111,7 @@ class DataGenerator(BaseGenerator):
             utils.POWER_DATA.loc[week_start : week_start + pd.Timedelta(days=7), col]
             / utils.POWER_DATA[col].max()
         )
+        assert all([x == y for x, y in zip(self.power_profile_norm.index, time_steps)])
 
         super().__init__(
             installed_capacity=installed_capacity,

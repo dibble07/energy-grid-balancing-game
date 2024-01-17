@@ -23,8 +23,8 @@ from utils import get_demand_curve
 st.header("Energy Grid Game")
 
 ## initialise gameplay components
-week_no = 6
-df_demand = get_demand_curve(week_no=week_no).to_frame() / 1e6
+week = 6
+df_demand = get_demand_curve(week=week).to_frame() / 1e6
 max_demand = max(df_demand["demand"])
 coal = 0
 gas = 0
@@ -51,12 +51,12 @@ with st.sidebar:
 
 ## run simulation
 demand = df_demand["demand"]
-t = np.arange(0, 7 * 24 + 1, 1)
-df_prod = pd.DataFrame({"t": t})
+t = demand.index
+df_prod = pd.DataFrame(index=t)
 
 ENERGY_PRODUCERS = {
-    "solar": SolarGenerator(time_steps=t, installed_capacity=solar, week=week_no),
-    "wind": WindGenerator(time_steps=t, installed_capacity=wind, week=week_no),
+    "solar": SolarGenerator(time_steps=t, installed_capacity=solar, week=week),
+    "wind": WindGenerator(time_steps=t, installed_capacity=wind, week=week),
     "gas": GasGenerator(time_steps=t, installed_capacity=gas),
     "coal": CoalGenerator(time_steps=t, installed_capacity=coal),
     "nuclear": NuclearGenerator(time_steps=t, installed_capacity=nuclear),

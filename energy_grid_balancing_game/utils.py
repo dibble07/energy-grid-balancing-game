@@ -36,9 +36,9 @@ WEEK_MAP = (
 )
 
 
-def get_demand_curve(week_no, population=83.2e6):
+def get_demand_curve(week, population=83.2e6):
     # extract timestamp of start of week
-    week_start = WEEK_MAP.loc[WEEK_MAP["week"] == week_no, "datetime"].values[0]
+    week_start = WEEK_MAP.loc[WEEK_MAP["week"] == week, "datetime"].values[0]
 
     # extract demand data for chosen week and scale to given population
     demand = (
@@ -46,6 +46,5 @@ def get_demand_curve(week_no, population=83.2e6):
         / 83.2e6
         * population
     )
-    demand.reset_index(drop=True, inplace=True)
 
     return demand
