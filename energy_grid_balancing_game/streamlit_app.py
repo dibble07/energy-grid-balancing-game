@@ -8,14 +8,14 @@ import streamlit as st
 from icecream import ic
 
 from calculate_production import calculate_cost_score, calculate_production
-from sources_and_sinks import (
+from generators import (
     CoalGenerator,
     GasGenerator,
     NuclearGenerator,
     SolarGenerator,
     WindGenerator,
-    get_demand_curve,
 )
+from utils import get_demand_curve
 
 # initialise app
 

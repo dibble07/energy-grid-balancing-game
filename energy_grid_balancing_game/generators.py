@@ -1,63 +1,8 @@
-import os
-import random
-
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-
-# constants for cost calculations
-# capex and opex https://atb.nrel.gov/electricity/2022/index
-# eu carbon pricing 86 EUR/TCO2e Jan 02 '23 https://www.statista.com/statistics/1322214/carbon-prices-european-union-emission-trading-scheme/
-# norway carbon tax from page 55 of https://www.norskindustri.no/siteassets/dokumenter/rapporter-og-brosjyrer/energy-transition-norway/2023/energy-transition-norway-2023.pdf
-USD_KWY = 10.42 / (1e3 * 365.25 * 24 * 3600)
-USD_KW = 10.42 / (1e3)
-GRAM_MWH = 0.001 / (1e6 * 3600)
-CARBON_TAX = 11.34 * (86 + 100) / 1000
-
-
-# load time series dataset
-# https://www.rte-france.com/en/eco2mix/power-generation-energy-source
-# https://www.kaggle.com/datasets/robikscube/hourly-energy-consumption
-# https://www.agora-energiewende.org/data-tools/agorameter
-power_data = (
-    pd.read_csv(
-        os.path.join(
-            os.getcwd(),
-            "energy_grid_balancing_game",
-            "power_generation_and_consumption.csv",
-        ),
-        index_col="date_id",
-    )
-    * 1e9
-)
-power_data.index = pd.DatetimeIndex(power_data.index)
-power_data.sort_index(inplace=True)
-week_map = (
-    power_data.index.isocalendar()
-    .reset_index()
-    .groupby(by="week")
-    .min()[["date_id"]]
-    .reset_index()
-)
-
-
-def get_demand_curve(week_no, population=83.2e6):
-    # extract timestamp of start of week
-    week_start = week_map.loc[week_map["week"] == week_no, "date_id"].values[0]
-
-    # extract demand data for chosen week and scale to given population
-    demand = (
-        power_data.loc[
-            week_start : week_start + pd.Timedelta(days=7), "Total electricity demand"
-        ]
-        / 83.2e6
-        * population
-    )
-    demand.rename("demand", inplace=True)
-    demand.reset_index(drop=True, inplace=True)
-
-    return demand
+import utils
 
 
 class BaseGenerator:
@@ -131,7 +76,7 @@ class BaseGenerator:
 
         # total costs
         co2 = energy_total * self.co2_opex
-        carbon_tax = co2 * CARBON_TAX if self.carbon_tax else 0
+        carbon_tax = co2 * utils.CARBON_TAX if self.carbon_tax else 0
         nok = (
             energy_total * self.nok_opex
             + self.installed_capacity * self.nok_capex
@@ -146,9 +91,9 @@ class SolarGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity,
-        co2_opex=41000 * GRAM_MWH,
-        nok_opex=19 * USD_KWY,
-        nok_capex=1784 * USD_KW / 30 / 52,
+        co2_opex=41000 * utils.GRAM_MWH,
+        nok_opex=19 * utils.USD_KWY,
+        nok_capex=1784 * utils.USD_KW / 30 / 52,
         carbon_tax=False,
         min_output=1.0,
         range_=12,
@@ -197,9 +142,9 @@ class WindGenerator(BaseGenerator):
         time_steps,
         installed_capacity,
         week_no,
-        co2_opex=11000 * GRAM_MWH,
-        nok_opex=(116 + 75) / 2 * USD_KWY,
-        nok_capex=(5908 + 3285) / 2 * USD_KW / 25 / 52,
+        co2_opex=11000 * utils.GRAM_MWH,
+        nok_opex=(116 + 75) / 2 * utils.USD_KWY,
+        nok_capex=(5908 + 3285) / 2 * utils.USD_KW / 25 / 52,
         carbon_tax=False,
         min_output=1.0,
     ):
@@ -207,12 +152,14 @@ class WindGenerator(BaseGenerator):
         Initialise technology specific values
         """
         # load normalised power profile
-        week_start = week_map.loc[week_map["week"] == week_no, "date_id"].values[0]
+        week_start = utils.WEEK_MAP.loc[
+            utils.WEEK_MAP["week"] == week_no, "date_id"
+        ].values[0]
         self.power_profile_norm = (
-            power_data.loc[
+            utils.POWER_DATA.loc[
                 week_start : week_start + pd.Timedelta(days=7), "Wind offshore"
             ]
-            / power_data["Wind offshore"].max()
+            / utils.POWER_DATA["Wind offshore"].max()
         )
 
         super().__init__(
@@ -235,9 +182,9 @@ class NuclearGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity,
-        co2_opex=24000 * GRAM_MWH,
-        nok_opex=(146 + 114) / 2 * USD_KWY,
-        nok_capex=(7989 + 7442) / 2 * USD_KW / 50 / 52,
+        co2_opex=24000 * utils.GRAM_MWH,
+        nok_opex=(146 + 114) / 2 * utils.USD_KWY,
+        nok_capex=(7989 + 7442) / 2 * utils.USD_KW / 50 / 52,
         carbon_tax=False,
         min_output=1.0,
     ):
@@ -260,9 +207,9 @@ class CoalGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity,
-        co2_opex=980_000 * GRAM_MWH,
-        nok_opex=(141 + 74) / 2 * USD_KWY,
-        nok_capex=(5327 + 3075) / 2 * USD_KW / 40 / 52,
+        co2_opex=980_000 * utils.GRAM_MWH,
+        nok_opex=(141 + 74) / 2 * utils.USD_KWY,
+        nok_capex=(5327 + 3075) / 2 * utils.USD_KW / 40 / 52,
         carbon_tax=True,
         min_output=0.32,
     ):
@@ -285,9 +232,9 @@ class GasGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity,
-        co2_opex=430_000 * GRAM_MWH,
-        nok_opex=(59 + 21) / 2 * USD_KWY,
-        nok_capex=(2324 + 922) / 2 * USD_KW / 30 / 52,
+        co2_opex=430_000 * utils.GRAM_MWH,
+        nok_opex=(59 + 21) / 2 * utils.USD_KWY,
+        nok_capex=(2324 + 922) / 2 * utils.USD_KW / 30 / 52,
         carbon_tax=True,
         min_output=0.35,
     ):
