@@ -16,6 +16,7 @@ streamlit = "^1"
 altair = "^4"
 numpy = "^1"
 openpyxl = "^3"
+black = {version = "^23", extras = ["jupyter"]}
 
 [tool.poetry.group.dev.dependencies]
 icecream = "^2"

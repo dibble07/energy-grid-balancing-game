@@ -20,19 +20,41 @@ CARBON_TAX = 11.34 * (86 + 100) / 1000
 # https://www.rte-france.com/en/eco2mix/power-generation-energy-source
 # https://www.kaggle.com/datasets/robikscube/hourly-energy-consumption
 # https://www.agora-energiewende.org/data-tools/agorameter
-power_data = pd.read_csv(os.path.join(os.getcwd(),"energy_grid_balancing_game","power_generation_and_consumption.csv"), index_col="date_id")*1e9
+power_data = (
+    pd.read_csv(
+        os.path.join(
+            os.getcwd(),
+            "energy_grid_balancing_game",
+            "power_generation_and_consumption.csv",
+        ),
+        index_col="date_id",
+    )
+    * 1e9
+)
 power_data.index = pd.DatetimeIndex(power_data.index)
 power_data.sort_index(inplace=True)
-week_map = power_data.index.isocalendar().reset_index().groupby(by="week").min()[["date_id"]].reset_index()
+week_map = (
+    power_data.index.isocalendar()
+    .reset_index()
+    .groupby(by="week")
+    .min()[["date_id"]]
+    .reset_index()
+)
 
 
-def get_demand_curve(week_no, population = 83.2e6):
+def get_demand_curve(week_no, population=83.2e6):
     # extract timestamp of start of week
-    week_start = week_map.loc[week_map["week"]==week_no,"date_id"].values[0]
-    
+    week_start = week_map.loc[week_map["week"] == week_no, "date_id"].values[0]
+
     # extract demand data for chosen week and scale to given population
-    demand = power_data.loc[week_start:week_start+pd.Timedelta(days=7),"Total electricity demand"]/83.2e6*population
-    demand.rename("demand",inplace=True)
+    demand = (
+        power_data.loc[
+            week_start : week_start + pd.Timedelta(days=7), "Total electricity demand"
+        ]
+        / 83.2e6
+        * population
+    )
+    demand.rename("demand", inplace=True)
     demand.reset_index(drop=True, inplace=True)
 
     return demand
@@ -191,8 +213,13 @@ class WindGenerator(BaseGenerator):
         """
 
         # load normalised power profile
-        week_start = week_map.loc[week_map["week"]==week_no,"date_id"].values[0]
-        self.power_profile_norm = power_data.loc[week_start:week_start+pd.Timedelta(days=7),"Wind offshore"]/power_data["Wind offshore"].max()
+        week_start = week_map.loc[week_map["week"] == week_no, "date_id"].values[0]
+        self.power_profile_norm = (
+            power_data.loc[
+                week_start : week_start + pd.Timedelta(days=7), "Wind offshore"
+            ]
+            / power_data["Wind offshore"].max()
+        )
 
         # calculate values
         self.calculate_max_power_profile()
