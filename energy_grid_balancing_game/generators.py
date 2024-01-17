@@ -38,7 +38,8 @@ class BaseGenerator:
 
         # capcity constraints
         self.min_output = min_output
-        self.installed_capacity = installed_capacity
+        if installed_capacity is not None:
+            self.installed_capacity = installed_capacity
 
     @property
     def installed_capacity(self):
@@ -130,8 +131,8 @@ class SolarGenerator(DataGenerator):
     def __init__(
         self,
         time_steps,
-        installed_capacity,
         week,
+        installed_capacity=None,
         co2_opex=41000 * utils.GRAM_MWH,
         nok_opex=19 * utils.USD_KWY,
         nok_capex=1784 * utils.USD_KW / 30 / 52,
@@ -156,8 +157,8 @@ class WindGenerator(DataGenerator):
     def __init__(
         self,
         time_steps,
-        installed_capacity,
         week,
+        installed_capacity=None,
         co2_opex=11000 * utils.GRAM_MWH,
         nok_opex=(116 + 75) / 2 * utils.USD_KWY,
         nok_capex=(5908 + 3285) / 2 * utils.USD_KW / 25 / 52,
@@ -182,7 +183,7 @@ class NuclearGenerator(BaseGenerator):
     def __init__(
         self,
         time_steps,
-        installed_capacity,
+        installed_capacity=None,
         co2_opex=24000 * utils.GRAM_MWH,
         nok_opex=(146 + 114) / 2 * utils.USD_KWY,
         nok_capex=(7989 + 7442) / 2 * utils.USD_KW / 50 / 52,
@@ -207,7 +208,7 @@ class CoalGenerator(BaseGenerator):
     def __init__(
         self,
         time_steps,
-        installed_capacity,
+        installed_capacity=None,
         co2_opex=980_000 * utils.GRAM_MWH,
         nok_opex=(141 + 74) / 2 * utils.USD_KWY,
         nok_capex=(5327 + 3075) / 2 * utils.USD_KW / 40 / 52,
@@ -232,7 +233,7 @@ class GasGenerator(BaseGenerator):
     def __init__(
         self,
         time_steps,
-        installed_capacity,
+        installed_capacity=None,
         co2_opex=430_000 * utils.GRAM_MWH,
         nok_opex=(59 + 21) / 2 * utils.USD_KWY,
         nok_capex=(2324 + 922) / 2 * utils.USD_KW / 30 / 52,

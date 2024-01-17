@@ -55,8 +55,8 @@ t = np.arange(0, 7 * 24 + 1, 1)
 df_prod = pd.DataFrame({"t": t})
 
 ENERGY_PRODUCERS = {
-    "solar": SolarGenerator(time_steps=t, installed_capacity=solar),
-    "wind": WindGenerator(time_steps=t, installed_capacity=wind, week_no=week_no),
+    "solar": SolarGenerator(time_steps=t, installed_capacity=solar, week=week_no),
+    "wind": WindGenerator(time_steps=t, installed_capacity=wind, week=week_no),
     "gas": GasGenerator(time_steps=t, installed_capacity=gas),
     "coal": CoalGenerator(time_steps=t, installed_capacity=coal),
     "nuclear": NuclearGenerator(time_steps=t, installed_capacity=nuclear),

@@ -18,8 +18,7 @@ CARBON_TAX = 11.34 * (86 + 100) / 1000
 POWER_DATA = (
     pd.read_csv(
         os.path.join(
-            os.getcwd(),
-            # "energy_grid_balancing_game",
+            os.path.dirname(os.path.realpath(__file__)),
             "power_generation_and_consumption.csv",
         ),
         index_col="datetime",
