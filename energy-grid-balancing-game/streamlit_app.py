@@ -4,20 +4,23 @@ import pandas as pd
 import altair as alt
 
 import numpy as np
-from data.get_demand_curve import get_demand_curve
 from calculate_production import calculate_cost_score, calculate_production
-from generators import (
+from sources_and_sinks import (
     CoalGenerator,
     GasGenerator,
     NuclearGenerator,
     OilGenerator,
     SolarGenerator,
     WindGenerator,
+    get_demand_curve
 )
+
+from icecream import ic
 
 st.header("Energy Grid Game")
 
-df_demand = get_demand_curve()
+week_no = 6
+df_demand = get_demand_curve(week_no=week_no).to_frame()/1e6
 max_demand = max(df_demand["demand"])
 coal = 0
 gas = 0
@@ -47,12 +50,12 @@ with st.sidebar:
     button_display = st.button("Run Simulation")
 
 demand = df_demand["demand"]
-t = np.linspace(0, 24 * 7, 24 * 7)
+t = np.arange(0,7*24+1,1)
 df_prod = pd.DataFrame({"t": t})
 
 ENERGY_PRODUCERS = {
     "solar": SolarGenerator(time_steps=t, installed_capacity=solar),
-    "wind": WindGenerator(time_steps=t, installed_capacity=wind),
+    "wind": WindGenerator(time_steps=t, installed_capacity=wind, week_no=week_no),
     "oil": OilGenerator(time_steps=t, installed_capacity=oil),
     "gas": GasGenerator(time_steps=t, installed_capacity=gas),
     "coal": CoalGenerator(time_steps=t, installed_capacity=coal),
@@ -61,7 +64,7 @@ ENERGY_PRODUCERS = {
 
 PRIORITY_LIST = ["nuclear", "solar", "hydro", "wind", "gas", "coal", "oil"]
 
-df_demand = df_demand.set_index("t")
+df_demand.index.name = "t"
 df_prod = calculate_production(ENERGY_PRODUCERS, df_demand, PRIORITY_LIST)
 co2, nok = calculate_cost_score(df_prod=df_prod, ENERGY_PRODUCERS=ENERGY_PRODUCERS)
 

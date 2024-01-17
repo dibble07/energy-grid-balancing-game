@@ -3,7 +3,7 @@ import pandas as pd
 
 
 def calculate_production(ENERGY_PRODUCERS, df_demand, priority_list):
-    t = np.linspace(0, 24 * 7, 24 * 7)
+    t = np.arange(0,7*24+1,1)
     df_prod = pd.DataFrame({"t": t})
     df_prod = df_prod.set_index("t")
 

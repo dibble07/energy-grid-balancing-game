@@ -5,7 +5,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-# convert units to SI
+
+# constants for cost calculations
 # capex and opex https://atb.nrel.gov/electricity/2022/index
 # eu carbon pricing 86 EUR/TCO2e Jan 02 '23 https://www.statista.com/statistics/1322214/carbon-prices-european-union-emission-trading-scheme/
 # norway carbon tax from page 55 of https://www.norskindustri.no/siteassets/dokumenter/rapporter-og-brosjyrer/energy-transition-norway/2023/energy-transition-norway-2023.pdf
@@ -13,6 +14,28 @@ USD_KWY = 10.42 / (1e3 * 365.25 * 24 * 3600)
 USD_KW = 10.42 / (1e3)
 GRAM_MWH = 0.001 / (1e6 * 3600)
 CARBON_TAX = 11.34 * (86 + 100) / 1000
+
+
+# load time series dataset
+# https://www.rte-france.com/en/eco2mix/power-generation-energy-source
+# https://www.kaggle.com/datasets/robikscube/hourly-energy-consumption
+# https://www.agora-energiewende.org/data-tools/agorameter
+power_data = pd.read_csv(os.path.join(os.getcwd(),"energy-grid-balancing-game","power_generation_and_consumption.csv"), index_col="date_id")*1e9
+power_data.index = pd.DatetimeIndex(power_data.index)
+power_data.sort_index(inplace=True)
+week_map = power_data.index.isocalendar().reset_index().groupby(by="week").min()[["date_id"]].reset_index()
+
+
+def get_demand_curve(week_no, population = 83.2e6):
+    # extract timestamp of start of week
+    week_start = week_map.loc[week_map["week"]==week_no,"date_id"].values[0]
+    
+    # extract demand data for chosen week and scale to given population
+    demand = power_data.loc[week_start:week_start+pd.Timedelta(days=7),"Total electricity demand"]/83.2e6*population
+    demand.rename("demand",inplace=True)
+    demand.reset_index(drop=True, inplace=True)
+
+    return demand
 
 
 class BaseGenerator:
@@ -147,6 +170,7 @@ class WindGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity,
+        week_no,
         co2_opex=11000 * GRAM_MWH,
         nok_opex=(116 + 75) / 2 * USD_KWY,
         nok_capex=(5908 + 3285) / 2 * USD_KW / 25 / 52,
@@ -166,27 +190,17 @@ class WindGenerator(BaseGenerator):
         Initialise technology specific values
         """
 
+        # load normalised power profile
+        week_start = week_map.loc[week_map["week"]==week_no,"date_id"].values[0]
+        self.power_profile_norm = power_data.loc[week_start:week_start+pd.Timedelta(days=7),"Wind offshore"]/power_data["Wind offshore"].max()
+
         # calculate values
         self.calculate_max_power_profile()
         self.calculate_min_power_profile()
 
-    def calculate_max_power_profile(self, seed=1250):
-        # set seed
-        random.seed(seed)
-
-        # laod data
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        wind = pd.read_csv(
-            dir_path
-            + "/data/Solar_and_WindOnOffshore__watt_produced_per_watt_installed.csv"
-        )
-        offset = random.randrange(0, len(wind) - 168, 24)
-
+    def calculate_max_power_profile(self):
         # calculate daily power profile
-        self.max_power = (
-            wind["offshoreWind"].iloc[offset + 0 : offset + 168]
-            * self.installed_capacity
-        ).to_dict()
+        self.max_power = (self.power_profile_norm * self.installed_capacity).to_dict()
 
 
 class NuclearGenerator(BaseGenerator):
