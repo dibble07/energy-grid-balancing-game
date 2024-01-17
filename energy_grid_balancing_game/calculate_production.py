@@ -31,7 +31,7 @@ def calculate_cost_score(df_prod, ENERGY_PRODUCERS):
     nok = 0
     co2 = 0
     for key, producer in ENERGY_PRODUCERS.items():
-        nok += producer.calculate_costs(df_prod[key])[0]
-        co2 += producer.calculate_costs(df_prod[key])[1]
+        nok += producer.calculate_dispatch(df_prod[key])[3]
+        co2 += producer.calculate_dispatch(df_prod[key])[4]
 
     return nok, co2

@@ -71,6 +71,8 @@ class BaseGenerator:
             Returns:
                 dispatch power (dict): dispatched power at each timestamp
                 spare power (dict): spare power at each timestamp
+                co2 (float): total CO2e generated [kg]
+                nok (float): total NOK spent [NOK]
         """
         dispatch_power = {
             k: np.clip(req, min_, max_)
@@ -85,33 +87,21 @@ class BaseGenerator:
             )
         }
 
-        return dispatch_power, spare_power
-
-    def calculate_costs(self, power):
-        """
-        Calculate finanical and emissions costs
-            Parameters:
-                power (list[float]): power generated for each time increment [W]
-            Returns:
-                co2 (float): total CO2e generated [kg]
-                nok (float): total NOK spent [NOK]
-        """
-        # total power generated
-        time_step = np.unique(np.diff(self.time_steps))
-        assert time_step.size == 1
-        time_step = time_step[0]
-        energy_total = sum(power) * time_step.total_seconds()
+        # total power dispatched
+        power_arr = np.array(list(dispatch_power.values()))
+        mean_power = np.array([power_arr[:-1], power_arr[1:]]).mean(axis=0)
+        time_diff = np.array([i.total_seconds() for i in np.diff(self.time_steps)])
+        energy = (mean_power * time_diff).sum()
 
         # total costs
-        co2 = energy_total * self.co2_opex
-        carbon_tax = co2 * utils.CARBON_TAX if self.carbon_tax else 0
+        co2 = energy * self.co2_opex
         nok = (
-            energy_total * self.nok_opex
+            energy * self.nok_opex
             + self.installed_capacity * self.nok_capex
-            + carbon_tax
+            + (co2 * utils.CARBON_TAX if self.carbon_tax else 0)
         )
 
-        return co2, nok
+        return dispatch_power, spare_power, energy, co2, nok
 
 
 class DataGenerator(BaseGenerator):
