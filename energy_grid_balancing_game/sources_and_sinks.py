@@ -232,35 +232,6 @@ class NuclearGenerator(BaseGenerator):
         self.calculate_min_power_profile()
 
 
-class OilGenerator(BaseGenerator):
-    def __init__(
-        self,
-        time_steps,
-        installed_capacity,
-        co2_opex=780_000 * GRAM_MWH,
-        nok_opex=(141 + 74) / 2 * USD_KWY * 1.15,
-        nok_capex=(5327 + 3075) / 2 * USD_KW * 1.15 / 40 / 52,
-        carbon_tax=True,
-        min_output=0.1,
-    ):
-        super().__init__(
-            installed_capacity=installed_capacity,
-            min_output=min_output,
-            co2_opex=co2_opex,
-            nok_opex=nok_opex,
-            nok_capex=nok_capex,
-            carbon_tax=carbon_tax,
-            time_steps=time_steps,
-        )
-        """
-        Initialise technology specific values
-        """
-
-        # calculate values
-        self.calculate_max_power_profile()
-        self.calculate_min_power_profile()
-
-
 class CoalGenerator(BaseGenerator):
     def __init__(
         self,
