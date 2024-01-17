@@ -20,7 +20,7 @@ CARBON_TAX = 11.34 * (86 + 100) / 1000
 # https://www.rte-france.com/en/eco2mix/power-generation-energy-source
 # https://www.kaggle.com/datasets/robikscube/hourly-energy-consumption
 # https://www.agora-energiewende.org/data-tools/agorameter
-power_data = pd.read_csv(os.path.join(os.getcwd(),"energy-grid-balancing-game","power_generation_and_consumption.csv"), index_col="date_id")*1e9
+power_data = pd.read_csv(os.path.join(os.getcwd(),"energy_grid_balancing_game","power_generation_and_consumption.csv"), index_col="date_id")*1e9
 power_data.index = pd.DatetimeIndex(power_data.index)
 power_data.sort_index(inplace=True)
 week_map = power_data.index.isocalendar().reset_index().groupby(by="week").min()[["date_id"]].reset_index()

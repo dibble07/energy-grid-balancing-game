@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "energy-grid-balancing-game"
+name = "energy_grid_balancing_game"
 version = "0.1.0"
 description = "Game to balance energy generators in the electricity grid"
 authors = ["Robert Dibble <robertdibble@live.co.uk>"]
