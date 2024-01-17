@@ -63,6 +63,30 @@ class BaseGenerator:
         "Calculate minimum power profile"
         self.min_power = {k: v * self.min_output for k, v in self.max_power.items()}
 
+    def calculate_dispatch(self, request) -> tuple[dict]:
+        """
+        Calculate dispatched energy
+            Parameters:
+                request (dict): requested energy dispatch at each timestamp
+            Returns:
+                dispatch power (dict): dispatched power at each timestamp
+                spare power (dict): spare power at each timestamp
+        """
+        dispatch_power = {
+            k: np.clip(req, min_, max_)
+            for min_, max_, (k, req) in zip(
+                self.min_power.values(), self.max_power.values(), request.items()
+            )
+        }
+        spare_power = {
+            k: np.clip(max_ - dispatch, 0, None)
+            for dispatch, (k, max_) in zip(
+                dispatch_power.values(), self.max_power.items()
+            )
+        }
+
+        return dispatch_power, spare_power
+
     def calculate_costs(self, power):
         """
         Calculate finanical and emissions costs
