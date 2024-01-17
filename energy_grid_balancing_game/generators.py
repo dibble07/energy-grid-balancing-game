@@ -86,80 +86,29 @@ class BaseGenerator:
         return co2, nok
 
 
-class SolarGenerator(BaseGenerator):
+class DataGenerator(BaseGenerator):
     def __init__(
         self,
         time_steps,
         installed_capacity,
-        co2_opex=41000 * utils.GRAM_MWH,
-        nok_opex=19 * utils.USD_KWY,
-        nok_capex=1784 * utils.USD_KW / 30 / 52,
-        carbon_tax=False,
-        min_output=1.0,
-        range_=12,
-        peak_time=12,
-    ):
-        """
-        Initialise technology specific values
-            Parameters:
-                range_ (float, int): Duration of sunlight [mins]
-                peak_time (float, int): Time of day that peak generation occurs [mins]
-        """
-
-        # technology specific constants
-        self.range = range_
-        self.peak_time = peak_time
-        self.daily_capcity = np.random.uniform(0.6, 1, int(time_steps.max() / 24))
-
-        super().__init__(
-            installed_capacity=installed_capacity,
-            min_output=min_output,
-            co2_opex=co2_opex,
-            nok_opex=nok_opex,
-            nok_capex=nok_capex,
-            carbon_tax=carbon_tax,
-            time_steps=time_steps,
-        )
-
-    def calculate_max_power_profile(self):
-        # calculate daily power profile
-        max_power = np.zeros_like(self.time_steps)
-        for day in range(int(self.time_steps.max() / 24)):
-            day_power = norm.pdf(self.time_steps, (day + 0.5) * 24, self.range / 2 / 3)
-            day_power = (
-                day_power
-                / day_power.max()
-                * self.daily_capcity[day]
-                * self.installed_capacity
-            )
-            max_power = max_power + day_power
-        self.max_power = {k: v for k, v in zip(self.time_steps, max_power)}
-
-
-class WindGenerator(BaseGenerator):
-    def __init__(
-        self,
-        time_steps,
-        installed_capacity,
-        week_no,
-        co2_opex=11000 * utils.GRAM_MWH,
-        nok_opex=(116 + 75) / 2 * utils.USD_KWY,
-        nok_capex=(5908 + 3285) / 2 * utils.USD_KW / 25 / 52,
-        carbon_tax=False,
-        min_output=1.0,
+        week,
+        co2_opex,
+        nok_opex,
+        nok_capex,
+        carbon_tax,
+        min_output,
+        col,
     ):
         """
         Initialise technology specific values
         """
         # load normalised power profile
         week_start = utils.WEEK_MAP.loc[
-            utils.WEEK_MAP["week"] == week_no, "date_id"
+            utils.WEEK_MAP["week"] == week, "datetime"
         ].values[0]
         self.power_profile_norm = (
-            utils.POWER_DATA.loc[
-                week_start : week_start + pd.Timedelta(days=7), "Wind offshore"
-            ]
-            / utils.POWER_DATA["Wind offshore"].max()
+            utils.POWER_DATA.loc[week_start : week_start + pd.Timedelta(days=7), col]
+            / utils.POWER_DATA[col].max()
         )
 
         super().__init__(
@@ -175,6 +124,58 @@ class WindGenerator(BaseGenerator):
     def calculate_max_power_profile(self):
         # calculate daily power profile
         self.max_power = (self.power_profile_norm * self.installed_capacity).to_dict()
+
+
+class SolarGenerator(DataGenerator):
+    def __init__(
+        self,
+        time_steps,
+        installed_capacity,
+        week,
+        co2_opex=41000 * utils.GRAM_MWH,
+        nok_opex=19 * utils.USD_KWY,
+        nok_capex=1784 * utils.USD_KW / 30 / 52,
+        carbon_tax=False,
+        min_output=1.0,
+        col="solar",
+    ):
+        super().__init__(
+            installed_capacity=installed_capacity,
+            week=week,
+            min_output=min_output,
+            co2_opex=co2_opex,
+            nok_opex=nok_opex,
+            nok_capex=nok_capex,
+            carbon_tax=carbon_tax,
+            time_steps=time_steps,
+            col=col,
+        )
+
+
+class WindGenerator(DataGenerator):
+    def __init__(
+        self,
+        time_steps,
+        installed_capacity,
+        week,
+        co2_opex=11000 * utils.GRAM_MWH,
+        nok_opex=(116 + 75) / 2 * utils.USD_KWY,
+        nok_capex=(5908 + 3285) / 2 * utils.USD_KW / 25 / 52,
+        carbon_tax=False,
+        min_output=1.0,
+        col="wind",
+    ):
+        super().__init__(
+            installed_capacity=installed_capacity,
+            week=week,
+            min_output=min_output,
+            co2_opex=co2_opex,
+            nok_opex=nok_opex,
+            nok_capex=nok_capex,
+            carbon_tax=carbon_tax,
+            time_steps=time_steps,
+            col=col,
+        )
 
 
 class NuclearGenerator(BaseGenerator):

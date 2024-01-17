@@ -19,10 +19,10 @@ POWER_DATA = (
     pd.read_csv(
         os.path.join(
             os.getcwd(),
-            "energy_grid_balancing_game",
+            # "energy_grid_balancing_game",
             "power_generation_and_consumption.csv",
         ),
-        index_col="date_id",
+        index_col="datetime",
     )
     * 1e9
 )
@@ -32,24 +32,21 @@ WEEK_MAP = (
     POWER_DATA.index.isocalendar()
     .reset_index()
     .groupby(by="week")
-    .min()[["date_id"]]
+    .min()[["datetime"]]
     .reset_index()
 )
 
 
 def get_demand_curve(week_no, population=83.2e6):
     # extract timestamp of start of week
-    week_start = WEEK_MAP.loc[WEEK_MAP["week"] == week_no, "date_id"].values[0]
+    week_start = WEEK_MAP.loc[WEEK_MAP["week"] == week_no, "datetime"].values[0]
 
     # extract demand data for chosen week and scale to given population
     demand = (
-        POWER_DATA.loc[
-            week_start : week_start + pd.Timedelta(days=7), "Total electricity demand"
-        ]
+        POWER_DATA.loc[week_start : week_start + pd.Timedelta(days=7), "demand"]
         / 83.2e6
         * population
     )
-    demand.rename("demand", inplace=True)
     demand.reset_index(drop=True, inplace=True)
 
     return demand
