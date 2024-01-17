@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
 
 import utils
+
+from icecream import ic
 
 
 class BaseGenerator:
@@ -43,7 +44,9 @@ class BaseGenerator:
 
     @property
     def installed_capacity(self):
-        return self._installed_capacity
+        return (
+            self._installed_capacity if hasattr(self, "_installed_capacity") else None
+        )
 
     @installed_capacity.setter
     def installed_capacity(self, value):
@@ -73,7 +76,7 @@ class BaseGenerator:
         time_step = np.unique(np.diff(self.time_steps))
         assert time_step.size == 1
         time_step = time_step[0]
-        energy_total = sum(power) * time_step.astype("timedelta64[s]").astype(int)
+        energy_total = sum(power) * time_step.total_seconds()
 
         # total costs
         co2 = energy_total * self.co2_opex

@@ -45,6 +45,6 @@ def get_demand_curve(week, population=83.2e6):
         POWER_DATA.loc[week_start : week_start + pd.Timedelta(days=7), "demand"]
         / 83.2e6
         * population
-    )
+    ).to_dict()
 
     return demand
