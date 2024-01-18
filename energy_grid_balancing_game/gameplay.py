@@ -11,7 +11,7 @@ class EnergyMixer:
         """
         Initialise energy mixer
             Parameters:
-                generators (dict): Generator classes in energy mix ,
+                generators (dict): Generator classes in energy mix in order of preference,
                 week(int): week of year in consideration,
         """
         # get demand curve

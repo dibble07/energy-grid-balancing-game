@@ -13,6 +13,9 @@ from generators import (
     WindGenerator,
 )
 
+# set config
+st.set_page_config(page_title="Energy Grid Game", layout="wide")
+
 # set header
 st.header("Energy Grid Game")
 
@@ -20,9 +23,9 @@ st.header("Energy Grid Game")
 week = np.random.randint(low=1, high=53)
 grid = EnergyMixer(
     generators={
+        "nuclear": NuclearGenerator,
         "solar": SolarGenerator,
         "wind": WindGenerator,
-        "nuclear": NuclearGenerator,
         "gas": GasGenerator,
         "coal": CoalGenerator,
     },
@@ -37,7 +40,7 @@ nuclear = 0
 solar = 0
 wind = 0
 with st.sidebar:
-    st.subheader("Installed capcity")
+    st.subheader("Installed capacity")
     coal = st.number_input("Coal (MW)", value=coal)
     gas = st.number_input("Gas (MW)", value=gas)
     nuclear = st.number_input("Nuclear (MW)", value=nuclear)
@@ -62,13 +65,11 @@ energy = sum(energy.values()) / 1e6 / 3600
 co2 = sum(co2.values())
 nok = sum(nok.values())
 with st.container():
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
         st.write(f"Cost [NOK/MWh]: {nok/energy:,.2f}")
     with col2:
         st.write(f"Emissions [kgCO2e/MWh]: {co2/energy:,.2f}")
-    with col3:
-        st.write(f"Stability score: {100}")
 
 # display graph
 with st.empty():
@@ -76,23 +77,33 @@ with st.empty():
         # data to plot
         dispatch_disp = dispatch.copy()
         dispatch_disp.iloc[i:] = np.nan
+        dispatch_disp = pd.melt(dispatch_disp.reset_index(), id_vars=["index"])
+        dispatch_disp["order"] = dispatch_disp["variable"].map(
+            {v: i for i, v in enumerate(grid.generators.keys())}
+        )
         demand_disp = pd.Series(grid.demand).rename("demand").copy()
         demand_disp.iloc[i:] = np.nan
+        demand_disp = pd.melt(demand_disp.reset_index(), id_vars=["index"])
 
         # chart layers
         dispatch_chart = (
-            alt.Chart(pd.melt(dispatch_disp.reset_index(), id_vars=["index"]))
+            alt.Chart(dispatch_disp)
             .mark_area()
             .encode(
                 alt.X("index", title=""),
                 alt.Y("value", title="", stack=True),
-                alt.Color("variable", title="", type="nominal"),
+                alt.Color(
+                    "variable",
+                    title="",
+                    type="nominal",
+                    sort=list(grid.generators.keys()),
+                ),
+                alt.Order(field="order"),
                 opacity={"value": 0.7},
             )
-            .interactive()
         )
         demand_chart = (
-            alt.Chart(pd.melt(demand_disp.reset_index(), id_vars=["index"]))
+            alt.Chart(demand_disp)
             .mark_line()
             .encode(
                 alt.X("index", title=""),
@@ -100,7 +111,6 @@ with st.empty():
                 alt.Color("variable", title="", type="nominal"),
                 opacity={"value": 0.7},
             )
-            .interactive()
         )
 
         # layered chart
@@ -108,5 +118,6 @@ with st.empty():
             alt.layer(
                 dispatch_chart,
                 demand_chart,
-            )
+            ),
+            use_container_width=True,
         )
