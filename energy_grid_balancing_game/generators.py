@@ -155,7 +155,7 @@ class SolarGenerator(DataGenerator):
         nok_opex=19 * utils.USD_KWY,
         nok_capex=1784 * utils.USD_KW / 30 / 52,
         carbon_tax=False,
-        min_output=1.0,
+        min_output=0,
         col="solar",
     ):
         super().__init__(
@@ -181,7 +181,7 @@ class WindGenerator(DataGenerator):
         nok_opex=(116 + 75) / 2 * utils.USD_KWY,
         nok_capex=(5908 + 3285) / 2 * utils.USD_KW / 25 / 52,
         carbon_tax=False,
-        min_output=1.0,
+        min_output=0,
         col="wind",
     ):
         super().__init__(
