@@ -30,26 +30,19 @@ grid = EnergyMixer(
 )
 max_demand = max(grid.demand.values())
 
-
-## get user inputs
+# get user inputs
 coal = 0
 gas = 0
 nuclear = 0
 solar = 0
 wind = 0
 with st.sidebar:
-    st.subheader("Energy Mix")
+    st.subheader("Installed capcity")
     coal = st.number_input("Coal (MW)", value=coal)
     gas = st.number_input("Gas (MW)", value=gas)
     nuclear = st.number_input("Nuclear (MW)", value=nuclear)
     solar = st.number_input("Solar (MW)", value=solar)
     wind = st.number_input("Wind (MW)", value=wind)
-    button_display = st.button("Run Simulation")
-    total_production = coal + gas + nuclear + solar + wind
-    st.write("Installed Capacity: :red[0]/24922")
-    st.write(
-        f"Installed Capacity: :{'red' if total_production < max_demand else 'green'}[{total_production:,.0f}]/{max_demand:,.0f}"
-    )
 
 # run simulation
 grid.set_installed_capacity(
@@ -64,7 +57,7 @@ grid.set_installed_capacity(
 dispatch, _, energy, co2, nok = grid.calculate_dispatch()
 dispatch = pd.DataFrame(dispatch)
 
-## display score(s)
+# display score(s)
 energy = sum(energy.values()) / 1e6 / 3600
 co2 = sum(co2.values())
 nok = sum(nok.values())
@@ -77,33 +70,43 @@ with st.container():
     with col3:
         st.write(f"Stability score: {100}")
 
-## display graph
+# display graph
 with st.empty():
-    for i in range(1, len(dispatch)):
+    for i in range(len(dispatch)):
+        # data to plot
         dispatch_disp = dispatch.copy()
         dispatch_disp.iloc[i:] = np.nan
         demand_disp = pd.Series(grid.demand).rename("demand").copy()
         demand_disp.iloc[i:] = np.nan
 
+        # chart layers
+        dispatch_chart = (
+            alt.Chart(pd.melt(dispatch_disp.reset_index(), id_vars=["index"]))
+            .mark_area()
+            .encode(
+                alt.X("index", title=""),
+                alt.Y("value", title="", stack=True),
+                alt.Color("variable", title="", type="nominal"),
+                opacity={"value": 0.7},
+            )
+            .interactive()
+        )
+        demand_chart = (
+            alt.Chart(pd.melt(demand_disp.reset_index(), id_vars=["index"]))
+            .mark_line()
+            .encode(
+                alt.X("index", title=""),
+                alt.Y("value", title="", stack=True),
+                alt.Color("variable", title="", type="nominal"),
+                opacity={"value": 0.7},
+            )
+            .interactive()
+        )
+
+        # layered chart
         st.altair_chart(
             alt.layer(
-                alt.Chart(pd.melt(dispatch_disp.reset_index(), id_vars=["index"]))
-                .mark_area()
-                .encode(
-                    alt.X("index", title=""),
-                    alt.Y("value", title="", stack=True),
-                    alt.Color("variable", title="", type="nominal"),
-                    opacity={"value": 0.7},
-                )
-                .interactive(),
-                alt.Chart(pd.melt(demand_disp.reset_index(), id_vars=["index"]))
-                .mark_line()
-                .encode(
-                    alt.X("index", title=""),
-                    alt.Y("value", title="", stack=True),
-                    alt.Color("variable", title="", type="nominal"),
-                    opacity={"value": 0.7},
-                )
-                .interactive(),
+                dispatch_chart,
+                demand_chart,
             )
         )
