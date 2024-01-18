@@ -36,15 +36,13 @@ WEEK_MAP = (
 )
 
 
-def get_demand_curve(week, population=83.2e6):
+def get_demand_curve(week):
     # extract timestamp of start of week
     week_start = WEEK_MAP.loc[WEEK_MAP["week"] == week, "datetime"].values[0]
 
     # extract demand data for chosen week and scale to given population
-    demand = (
-        POWER_DATA.loc[week_start : week_start + pd.Timedelta(days=7), "demand"]
-        / 83.2e6
-        * population
-    ).to_dict()
+    demand = POWER_DATA.loc[
+        week_start : week_start + pd.Timedelta(days=7), "demand"
+    ].to_dict()
 
     return demand

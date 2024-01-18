@@ -75,13 +75,13 @@ with st.container():
 with st.empty():
     for i in range(len(dispatch)):
         # data to plot
-        dispatch_disp = dispatch.copy()
+        dispatch_disp = dispatch.copy() / 1e6
         dispatch_disp.iloc[i:] = np.nan
         dispatch_disp = pd.melt(dispatch_disp.reset_index(), id_vars=["index"])
         dispatch_disp["order"] = dispatch_disp["variable"].map(
             {v: i for i, v in enumerate(grid.generators.keys())}
         )
-        demand_disp = pd.Series(grid.demand).rename("demand").copy()
+        demand_disp = pd.Series(grid.demand).rename("demand").copy() / 1e6
         demand_disp.iloc[i:] = np.nan
         demand_disp = pd.melt(demand_disp.reset_index(), id_vars=["index"])
 
@@ -90,8 +90,8 @@ with st.empty():
             alt.Chart(dispatch_disp)
             .mark_area()
             .encode(
-                alt.X("index", title=""),
-                alt.Y("value", title="", stack=True),
+                alt.X("index", title="", axis=alt.Axis(tickCount="day")),
+                alt.Y("value", title="Power [MW]", stack=True),
                 alt.Color(
                     "variable",
                     title="",
@@ -106,7 +106,7 @@ with st.empty():
             alt.Chart(demand_disp)
             .mark_line()
             .encode(
-                alt.X("index", title=""),
+                alt.X("index", title="", axis=alt.Axis(tickCount="day")),
                 alt.Y("value", title="", stack=True),
                 alt.Color("variable", title="", type="nominal"),
                 opacity={"value": 0.7},
