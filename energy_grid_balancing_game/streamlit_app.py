@@ -15,6 +15,13 @@ from generators import (
 
 # set config
 st.set_page_config(page_title="Energy Grid Game", layout="wide")
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # set header
 st.header("Energy Grid Game")
@@ -61,9 +68,9 @@ dispatch, _, totals = grid.calculate_dispatch()
 dispatch = pd.DataFrame(dispatch)
 
 # display score(s)
-energy = sum([d["energy"] for d in totals.values()]) / 1e6 / 3600
+energy = sum([d["dispatch_energy"] for d in totals.values()]) / 1e6 / 3600
 co2 = sum([d["co2"] for d in totals.values()])
-cost = sum([d["cost"] for d in totals.values()])
+cost = sum([d["capex"] + d["opex"] + d["carbon_tax"] for d in totals.values()])
 with st.container():
     col1, col2 = st.columns(2)
     with col1:

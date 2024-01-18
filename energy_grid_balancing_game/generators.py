@@ -85,21 +85,39 @@ class BaseGenerator:
             )
         }
 
-        # total power dispatched
-        power_arr = np.array(list(dispatch_power.values()))
-        mean_power = np.array([power_arr[:-1], power_arr[1:]]).mean(axis=0)
-        time_diff = np.array([i.total_seconds() for i in np.diff(self.time_steps)])
-        energy = (mean_power * time_diff).sum()
-
-        # total costs
-        co2 = energy * self.co2_oper
-        cost = (
-            energy * self.cost_oper
-            + self.installed_capacity * self.cost_inst
-            + (co2 * utils.CARBON_TAX if self.carbon_tax else 0)
+        # total energy
+        dispatch_power_arr = np.array(list(dispatch_power.values()))
+        dispatch_power_arr = np.array(
+            [dispatch_power_arr[:-1], dispatch_power_arr[1:]]
+        ).mean(axis=0)
+        spare_power_arr = np.array(list(spare_power.values()))
+        spare_power_arr = np.array([spare_power_arr[:-1], spare_power_arr[1:]]).mean(
+            axis=0
         )
+        time_diff = np.array([i.total_seconds() for i in np.diff(self.time_steps)])
+        dispatch_energy = (dispatch_power_arr * time_diff).sum()
+        spare_energy = (spare_power_arr * time_diff).sum()
 
-        return dispatch_power, spare_power, {"energy": energy, "co2": co2, "cost": cost}
+        # emissions and costs
+        co2 = dispatch_energy * self.co2_oper
+        capex = self.installed_capacity * self.cost_inst
+        opex = dispatch_energy * self.cost_oper
+        carbon_tax = co2 * utils.CARBON_TAX if self.carbon_tax else 0
+        social_carbon_cost = co2 * utils.SOCIAL_CARBON_COST
+
+        return (
+            dispatch_power,
+            spare_power,
+            {
+                "dispatch_energy": dispatch_energy,
+                "spare_energy": spare_energy,
+                "co2": co2,
+                "capex": capex,
+                "opex": opex,
+                "carbon_tax": carbon_tax,
+                "social_carbon_cost": social_carbon_cost,
+            },
+        )
 
 
 class DataGenerator(BaseGenerator):
