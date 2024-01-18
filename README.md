@@ -18,9 +18,6 @@ The user is able to select energy generators from a range of sources (both renew
     - `streamlit run energy_grid_balancing_game/streamlit_app.py`
 
 ## To do
-- Revert to Euros
-- Curtail renewables
-- Fix colour on installed capac
 - Calculate optimum score
     - Cache value in streamlit
 - Give context to slider values

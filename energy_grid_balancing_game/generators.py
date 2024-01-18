@@ -3,17 +3,15 @@ import pandas as pd
 
 import utils
 
-from icecream import ic
-
 
 class BaseGenerator:
     def __init__(
         self,
         installed_capacity,
         min_output,
-        co2_opex,
-        nok_opex,
-        nok_capex,
+        co2_oper,
+        cost_oper,
+        cost_inst,
         carbon_tax,
         time_steps,
     ):
@@ -22,16 +20,16 @@ class BaseGenerator:
             Parameters:
                 installed_capacity (float, int): Installed capacity [W]
                 min_output (float): Proportion of available power that must be generated [-]
-                co2_opex (float, int): CO2e per unit energy [kg/J]
-                nok_opex (float, int): NOK per unit energy [NOK/J]
-                nok_capex (float, int): NOK per installed capacity [NOK/W/WEEK]
+                co2_oper (float, int): CO2e per unit energy [kg/J]
+                cost_oper (float, int): EUR per unit energy [EUR/J]
+                cost_inst (float, int): EUR per installed capacity [EUR/W/WEEK]
                 carbon_tax (bool): Whether or not subject to carbon tax
                 time_steps (list[float]): Time range [hours]
         """
         # cost rates
-        self.co2_opex = co2_opex
-        self.nok_opex = nok_opex
-        self.nok_capex = nok_capex
+        self.co2_oper = co2_oper
+        self.cost_oper = cost_oper
+        self.cost_inst = cost_inst
         self.carbon_tax = carbon_tax
 
         # time constants
@@ -72,7 +70,7 @@ class BaseGenerator:
                 dispatch power (dict): dispatched power at each timestamp
                 spare power (dict): spare power at each timestamp
                 co2 (float): total CO2e generated [kg]
-                nok (float): total NOK spent [NOK]
+                cost (float): total cost [EUR]
         """
         dispatch_power = {
             k: np.clip(req, min_, max_)
@@ -94,14 +92,14 @@ class BaseGenerator:
         energy = (mean_power * time_diff).sum()
 
         # total costs
-        co2 = energy * self.co2_opex
-        nok = (
-            energy * self.nok_opex
-            + self.installed_capacity * self.nok_capex
+        co2 = energy * self.co2_oper
+        cost = (
+            energy * self.cost_oper
+            + self.installed_capacity * self.cost_inst
             + (co2 * utils.CARBON_TAX if self.carbon_tax else 0)
         )
 
-        return dispatch_power, spare_power, energy, co2, nok
+        return dispatch_power, spare_power, energy, co2, cost
 
 
 class DataGenerator(BaseGenerator):
@@ -110,9 +108,9 @@ class DataGenerator(BaseGenerator):
         time_steps,
         installed_capacity,
         week,
-        co2_opex,
-        nok_opex,
-        nok_capex,
+        co2_oper,
+        cost_oper,
+        cost_inst,
         carbon_tax,
         min_output,
         col,
@@ -133,9 +131,9 @@ class DataGenerator(BaseGenerator):
         super().__init__(
             installed_capacity=installed_capacity,
             min_output=min_output,
-            co2_opex=co2_opex,
-            nok_opex=nok_opex,
-            nok_capex=nok_capex,
+            co2_oper=co2_oper,
+            cost_oper=cost_oper,
+            cost_inst=cost_inst,
             carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
@@ -151,9 +149,9 @@ class SolarGenerator(DataGenerator):
         time_steps,
         week,
         installed_capacity=None,
-        co2_opex=41000 * utils.GRAM_MWH,
-        nok_opex=19 * utils.USD_KWY,
-        nok_capex=1784 * utils.USD_KW / 30 / 52,
+        co2_oper=41000 * utils.GRAM_MWH,
+        cost_oper=19 * utils.USD_KWY,
+        cost_inst=1784 * utils.USD_KW / 30 / 52,
         carbon_tax=False,
         min_output=0,
         col="solar",
@@ -162,9 +160,9 @@ class SolarGenerator(DataGenerator):
             installed_capacity=installed_capacity,
             week=week,
             min_output=min_output,
-            co2_opex=co2_opex,
-            nok_opex=nok_opex,
-            nok_capex=nok_capex,
+            co2_oper=co2_oper,
+            cost_oper=cost_oper,
+            cost_inst=cost_inst,
             carbon_tax=carbon_tax,
             time_steps=time_steps,
             col=col,
@@ -177,9 +175,9 @@ class WindGenerator(DataGenerator):
         time_steps,
         week,
         installed_capacity=None,
-        co2_opex=11000 * utils.GRAM_MWH,
-        nok_opex=(116 + 75) / 2 * utils.USD_KWY,
-        nok_capex=(5908 + 3285) / 2 * utils.USD_KW / 25 / 52,
+        co2_oper=11000 * utils.GRAM_MWH,
+        cost_oper=(116 + 75) / 2 * utils.USD_KWY,
+        cost_inst=(5908 + 3285) / 2 * utils.USD_KW / 25 / 52,
         carbon_tax=False,
         min_output=0,
         col="wind",
@@ -188,9 +186,9 @@ class WindGenerator(DataGenerator):
             installed_capacity=installed_capacity,
             week=week,
             min_output=min_output,
-            co2_opex=co2_opex,
-            nok_opex=nok_opex,
-            nok_capex=nok_capex,
+            co2_oper=co2_oper,
+            cost_oper=cost_oper,
+            cost_inst=cost_inst,
             carbon_tax=carbon_tax,
             time_steps=time_steps,
             col=col,
@@ -202,18 +200,18 @@ class NuclearGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity=None,
-        co2_opex=24000 * utils.GRAM_MWH,
-        nok_opex=(146 + 114) / 2 * utils.USD_KWY,
-        nok_capex=(7989 + 7442) / 2 * utils.USD_KW / 50 / 52,
+        co2_oper=24000 * utils.GRAM_MWH,
+        cost_oper=(146 + 114) / 2 * utils.USD_KWY,
+        cost_inst=(7989 + 7442) / 2 * utils.USD_KW / 50 / 52,
         carbon_tax=False,
         min_output=1.0,
     ):
         super().__init__(
             installed_capacity=installed_capacity,
             min_output=min_output,
-            co2_opex=co2_opex,
-            nok_opex=nok_opex,
-            nok_capex=nok_capex,
+            co2_oper=co2_oper,
+            cost_oper=cost_oper,
+            cost_inst=cost_inst,
             carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
@@ -227,18 +225,18 @@ class CoalGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity=None,
-        co2_opex=980_000 * utils.GRAM_MWH,
-        nok_opex=(141 + 74) / 2 * utils.USD_KWY,
-        nok_capex=(5327 + 3075) / 2 * utils.USD_KW / 40 / 52,
+        co2_oper=980_000 * utils.GRAM_MWH,
+        cost_oper=(141 + 74) / 2 * utils.USD_KWY,
+        cost_inst=(5327 + 3075) / 2 * utils.USD_KW / 40 / 52,
         carbon_tax=True,
         min_output=0.32,
     ):
         super().__init__(
             installed_capacity=installed_capacity,
             min_output=min_output,
-            co2_opex=co2_opex,
-            nok_opex=nok_opex,
-            nok_capex=nok_capex,
+            co2_oper=co2_oper,
+            cost_oper=cost_oper,
+            cost_inst=cost_inst,
             carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
@@ -252,18 +250,18 @@ class GasGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity=None,
-        co2_opex=430_000 * utils.GRAM_MWH,
-        nok_opex=(59 + 21) / 2 * utils.USD_KWY,
-        nok_capex=(2324 + 922) / 2 * utils.USD_KW / 30 / 52,
+        co2_oper=430_000 * utils.GRAM_MWH,
+        cost_oper=(59 + 21) / 2 * utils.USD_KWY,
+        cost_inst=(2324 + 922) / 2 * utils.USD_KW / 30 / 52,
         carbon_tax=True,
         min_output=0.35,
     ):
         super().__init__(
             installed_capacity=installed_capacity,
             min_output=min_output,
-            co2_opex=co2_opex,
-            nok_opex=nok_opex,
-            nok_capex=nok_capex,
+            co2_oper=co2_oper,
+            cost_oper=cost_oper,
+            cost_inst=cost_inst,
             carbon_tax=carbon_tax,
             time_steps=time_steps,
         )

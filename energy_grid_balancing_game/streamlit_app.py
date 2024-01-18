@@ -57,17 +57,17 @@ grid.set_installed_capacity(
         "nuclear": nuclear * 1e6,
     }
 )
-dispatch, _, energy, co2, nok = grid.calculate_dispatch()
+dispatch, _, energy, co2, cost = grid.calculate_dispatch()
 dispatch = pd.DataFrame(dispatch)
 
 # display score(s)
 energy = sum(energy.values()) / 1e6 / 3600
 co2 = sum(co2.values())
-nok = sum(nok.values())
+cost = sum(cost.values())
 with st.container():
     col1, col2 = st.columns(2)
     with col1:
-        st.write(f"Cost [NOK/MWh]: {nok/energy:,.2f}")
+        st.write(f"Cost [EUR/MWh]: {cost/energy:,.2f}")
     with col2:
         st.write(f"Emissions [kgCO2e/MWh]: {co2/energy:,.2f}")
 

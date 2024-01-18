@@ -46,7 +46,7 @@ class EnergyMixer:
         spare_all = {}
         energy_all = {}
         co2_all = {}
-        nok_all = {}
+        cost_all = {}
 
         # loop over generation sources in order of preference
         for col in ["nuclear", "gas", "coal", "solar", "wind"]:
@@ -62,7 +62,7 @@ class EnergyMixer:
                 spare_all[col],
                 energy_all[col],
                 co2_all[col],
-                nok_all[col],
+                cost_all[col],
             ) = self.generators[col].calculate_dispatch(request)
 
-        return dispatch_all, spare_all, energy_all, co2_all, nok_all
+        return dispatch_all, spare_all, energy_all, co2_all, cost_all
