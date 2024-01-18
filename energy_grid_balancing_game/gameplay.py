@@ -42,27 +42,19 @@ class EnergyMixer:
         "calculate dispatch and spare capacity of each generator"
 
         # initially dispatch levels at minimum for each generator
-        dispatch_all = self.min_power_profiles.copy()
-        spare_all = {}
-        energy_all = {}
-        co2_all = {}
-        cost_all = {}
+        dispatch = self.min_power_profiles.copy()
+        spare = {}
+        totals = {}
 
         # loop over generation sources in order of preference
-        for col in ["nuclear", "gas", "coal", "solar", "wind"]:
+        for name, gen in self.generators.items():
             # calculate shortfall between current dispatch and demand
             shortfall = (
-                pd.Series(self.demand) - pd.DataFrame(dispatch_all).sum(axis=1)
+                pd.Series(self.demand) - pd.DataFrame(dispatch).sum(axis=1)
             ).clip(lower=0)
 
             # request generator provides its minimum plus the shortfall
-            request = (shortfall + pd.Series(self.generators[col].min_power)).to_dict()
-            (
-                dispatch_all[col],
-                spare_all[col],
-                energy_all[col],
-                co2_all[col],
-                cost_all[col],
-            ) = self.generators[col].calculate_dispatch(request)
+            request = (shortfall + pd.Series(gen.min_power)).to_dict()
+            dispatch[name], spare[name], totals[name] = gen.calculate_dispatch(request)
 
-        return dispatch_all, spare_all, energy_all, co2_all, cost_all
+        return dispatch, spare, totals

@@ -99,7 +99,7 @@ class BaseGenerator:
             + (co2 * utils.CARBON_TAX if self.carbon_tax else 0)
         )
 
-        return dispatch_power, spare_power, energy, co2, cost
+        return dispatch_power, spare_power, {"energy": energy, "co2": co2, "cost": cost}
 
 
 class DataGenerator(BaseGenerator):

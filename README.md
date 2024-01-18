@@ -18,13 +18,6 @@ The user is able to select energy generators from a range of sources (both renew
     - `streamlit run energy_grid_balancing_game/streamlit_app.py`
 
 ## To do
-- Calculate optimum score
-    - Cache value in streamlit
-- Give context to slider values
-    -2GW per nuclear plant, 5.4MW per wind turbine onshore, 8.6MW per wind turbine offshore
-- Add storage entity
-    - Hydro, hyrogen or battery
-    - Green energy only?
 - Single score value
     - Ethical carbon tax to reduce to single value
     - Normalise by power generated
@@ -33,3 +26,11 @@ The user is able to select energy generators from a range of sources (both renew
         - Split by source
     - Fail if not all energy need is met
         - Fun animation and stats about blackouts
+- Give context to slider values
+    -2GW per nuclear plant, 5.4MW per wind turbine onshore, 8.6MW per wind turbine offshore
+- Describe methodology
+- Calculate optimum score
+    - Cache value in streamlit
+- Add storage entity
+    - Hydro, hyrogen or battery
+    - Green energy only?

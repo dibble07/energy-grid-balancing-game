@@ -57,13 +57,13 @@ grid.set_installed_capacity(
         "nuclear": nuclear * 1e6,
     }
 )
-dispatch, _, energy, co2, cost = grid.calculate_dispatch()
+dispatch, _, totals = grid.calculate_dispatch()
 dispatch = pd.DataFrame(dispatch)
 
 # display score(s)
-energy = sum(energy.values()) / 1e6 / 3600
-co2 = sum(co2.values())
-cost = sum(cost.values())
+energy = sum([d["energy"] for d in totals.values()]) / 1e6 / 3600
+co2 = sum([d["co2"] for d in totals.values()])
+cost = sum([d["cost"] for d in totals.values()])
 with st.container():
     col1, col2 = st.columns(2)
     with col1:
@@ -79,7 +79,7 @@ with st.empty():
         dispatch_disp.iloc[i:] = np.nan
         dispatch_disp = pd.melt(dispatch_disp.reset_index(), id_vars=["index"])
         dispatch_disp["order"] = dispatch_disp["variable"].map(
-            {v: i for i, v in enumerate(grid.generators.keys())}
+            {"solar": 1, "wind": 2, "nuclear": 0, "gas": 3, "coal": 4}
         )
         demand_disp = pd.Series(grid.demand).rename("demand").copy() / 1e6
         demand_disp.iloc[i:] = np.nan
