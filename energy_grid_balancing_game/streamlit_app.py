@@ -140,6 +140,12 @@ with st.empty():
         totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
         / (totals.loc["dispatch_energy"] / 1e6 / 3600)
     ).fillna(0)
+    costs_text = costs_disp.sum().to_frame("total_cost")
+    costs_text["percent"] = (
+        totals.loc["dispatch_energy"] / totals.loc["dispatch_energy"].sum() * 100
+    )
+    costs_text.reset_index(inplace=True)
+    costs_text["index"] = costs_text["index"].map(lambda x: x.replace("_", " ").title())
     costs_disp.rename(
         index={"capex": "installation", "opex": "operation"}, inplace=True
     )
@@ -152,8 +158,8 @@ with st.empty():
         lambda x: x.replace("_", " ").title()
     )
 
-    # chart
-    st.altair_chart(
+    # costs chart
+    costs_chart = (
         alt.Chart(costs_disp)
         .mark_bar()
         .encode(
@@ -162,6 +168,25 @@ with st.empty():
             alt.Color("index", title="", type="nominal", sort=cost_order),
             alt.Order(field="order"),
             opacity={"value": 0.7},
+        )
+    )
+
+    # annotation chart
+    annotate_chart = (
+        alt.Chart(costs_text)
+        .mark_text(baseline="bottom", color="white")
+        .encode(
+            alt.X("index", title=""),
+            alt.Y("total_cost", title=""),
+            alt.Text("percent", format=".1f"),
+        )
+    )
+
+    # layered chart
+    st.altair_chart(
+        alt.layer(
+            costs_chart,
+            annotate_chart,
         ),
         use_container_width=True,
     )
