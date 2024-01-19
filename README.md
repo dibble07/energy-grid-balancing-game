@@ -18,7 +18,6 @@ The user is able to select energy generators from a range of sources (both renew
     - `streamlit run energy_grid_balancing_game/streamlit_app.py`
 
 ## To do
-- Single score value display
 - Fail if not all energy need is met
     - Fun animation and stats about blackouts
 - Consider displaying distribution of dispatched/spare energy energy
@@ -26,7 +25,6 @@ The user is able to select energy generators from a range of sources (both renew
 - More info on user values
     - Context: 2GW per nuclear plant, 5.4MW per wind turbine onshore, 8.6MW per wind turbine offshore
     - Tips on good/bad of each resource
-- Choose/set day
 - Describe methodology
     - Assume perfect ramping
     - Ignore ability to turn off gas/coal intermittently

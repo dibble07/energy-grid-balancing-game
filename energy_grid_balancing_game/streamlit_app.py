@@ -12,6 +12,7 @@ from generators import (
     SolarGenerator,
     WindGenerator,
 )
+from utils import WEEK_MAP
 
 # set config
 st.set_page_config(page_title="Energy Grid Game", layout="wide")
@@ -26,8 +27,20 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 # set header
 st.header("Energy Grid Game")
 
+# get user inputs
+week_map = WEEK_MAP.copy()
+week_map["date"] = week_map["datetime"].dt.date
+with st.sidebar:
+    st.subheader("Installed capacity")
+    week_dt = st.selectbox("Week commencing", week_map["date"].values, index=None)
+    coal = st.number_input("Coal (MW)", min_value=0, value=0)
+    gas = st.number_input("Gas (MW)", min_value=0, value=0)
+    nuclear = st.number_input("Nuclear (MW)", min_value=0, value=0)
+    solar = st.number_input("Solar (MW)", min_value=0, value=0)
+    wind = st.number_input("Wind (MW)", min_value=0, value=0)
+week_no = week_map.loc[week_map["date"] == week_dt, "week"].values[0]
+
 # initialise gameplay components
-week = np.random.randint(low=1, high=53)
 grid = EnergyMixer(
     generators={
         "nuclear": NuclearGenerator,
@@ -36,23 +49,9 @@ grid = EnergyMixer(
         "gas": GasGenerator,
         "coal": CoalGenerator,
     },
-    week=week,
+    week=week_no,
 )
 max_demand = max(grid.demand.values())
-
-# get user inputs
-coal = 0
-gas = 0
-nuclear = 0
-solar = 0
-wind = 0
-with st.sidebar:
-    st.subheader("Installed capacity")
-    coal = st.number_input("Coal (MW)", min_value=0, value=coal)
-    gas = st.number_input("Gas (MW)", min_value=0, value=gas)
-    nuclear = st.number_input("Nuclear (MW)", min_value=0, value=nuclear)
-    solar = st.number_input("Solar (MW)", min_value=0, value=solar)
-    wind = st.number_input("Wind (MW)", min_value=0, value=wind)
 
 # run simulation
 grid.set_installed_capacity(
