@@ -66,11 +66,12 @@ grid.set_installed_capacity(
 )
 dispatch, _, totals = grid.calculate_dispatch()
 dispatch = pd.DataFrame(dispatch)
+totals = pd.DataFrame(totals)
 
 # display score(s)
-energy = sum([d["dispatch_energy"] for d in totals.values()]) / 1e6 / 3600
-co2 = sum([d["co2"] for d in totals.values()])
-cost = sum([d["capex"] + d["opex"] + d["carbon_tax"] for d in totals.values()])
+energy = totals.loc["dispatch_energy"].sum() / 1e6 / 3600
+co2 = totals.loc["co2"].sum()
+cost = totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
 with st.container():
     col1, col2 = st.columns(2)
     with col1:
@@ -88,7 +89,10 @@ with st.empty():
         dispatch_disp["order"] = dispatch_disp["variable"].map(
             {"solar": 1, "wind": 2, "nuclear": 0, "gas": 3, "coal": 4}
         )
-        demand_disp = pd.Series(grid.demand).rename("demand").copy() / 1e6
+        dispatch_disp["variable"] = dispatch_disp["variable"].map(
+            lambda x: x.replace("_", " ").title()
+        )
+        demand_disp = pd.Series(grid.demand).rename("Demand").copy() / 1e6
         demand_disp.iloc[i:] = np.nan
         demand_disp = pd.melt(demand_disp.reset_index(), id_vars=["index"])
 
@@ -128,3 +132,36 @@ with st.empty():
             ),
             use_container_width=True,
         )
+
+# display graph
+with st.empty():
+    # data to plot
+    costs_disp = (
+        totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
+        / (totals.loc["dispatch_energy"] / 1e6 / 3600)
+    ).fillna(0)
+    costs_disp.rename(
+        index={"capex": "installation", "opex": "operation"}, inplace=True
+    )
+    costs_disp = pd.melt(costs_disp.reset_index(), id_vars=["index"])
+    cost_order = ["capex", "opex", "carbon_tax", "social_carbon_cost"]
+    costs_disp["order"] = costs_disp["index"].map(
+        {k: v for v, k in enumerate(cost_order)}
+    )
+    costs_disp[["index", "variable"]] = costs_disp[["index", "variable"]].map(
+        lambda x: x.replace("_", " ").title()
+    )
+
+    # chart
+    st.altair_chart(
+        alt.Chart(costs_disp)
+        .mark_bar()
+        .encode(
+            alt.X("variable", title="", axis=alt.Axis(labelAngle=0)),
+            alt.Y("value", title="Cost [EUR/MWh]", stack=True),
+            alt.Color("index", title="", type="nominal", sort=cost_order),
+            alt.Order(field="order"),
+            opacity={"value": 0.7},
+        ),
+        use_container_width=True,
+    )
