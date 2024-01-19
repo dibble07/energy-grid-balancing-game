@@ -48,11 +48,11 @@ solar = 0
 wind = 0
 with st.sidebar:
     st.subheader("Installed capacity")
-    coal = st.number_input("Coal (MW)", value=coal)
-    gas = st.number_input("Gas (MW)", value=gas)
-    nuclear = st.number_input("Nuclear (MW)", value=nuclear)
-    solar = st.number_input("Solar (MW)", value=solar)
-    wind = st.number_input("Wind (MW)", value=wind)
+    coal = st.number_input("Coal (MW)", min_value=0, value=coal)
+    gas = st.number_input("Gas (MW)", min_value=0, value=gas)
+    nuclear = st.number_input("Nuclear (MW)", min_value=0, value=nuclear)
+    solar = st.number_input("Solar (MW)", min_value=0, value=solar)
+    wind = st.number_input("Wind (MW)", min_value=0, value=wind)
 
 # run simulation
 grid.set_installed_capacity(

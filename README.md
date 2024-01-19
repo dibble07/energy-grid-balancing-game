@@ -18,7 +18,6 @@ The user is able to select energy generators from a range of sources (both renew
     - `streamlit run energy_grid_balancing_game/streamlit_app.py`
 
 ## To do
-- Stop negative installed capacity
 - Single score value display
 - Fail if not all energy need is met
     - Fun animation and stats about blackouts
