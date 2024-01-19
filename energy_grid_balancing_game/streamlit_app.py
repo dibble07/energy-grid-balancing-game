@@ -70,13 +70,18 @@ totals = pd.DataFrame(totals)
 
 # display score(s)
 energy = totals.loc["dispatch_energy"].sum() / 1e6 / 3600
+holistic_cost = (
+    totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]].sum().sum()
+)
+financial_cost = totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
 co2 = totals.loc["co2"].sum()
-cost = totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
 with st.container():
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        st.write(f"Cost [EUR/MWh]: {cost/energy:,.2f}")
+        st.write(f"Holistic cost [EUR/MWh]: {holistic_cost/energy:,.2f}")
     with col2:
+        st.write(f"Financial cost [EUR/MWh]: {financial_cost/energy:,.2f}")
+    with col3:
         st.write(f"Emissions [kgCO2e/MWh]: {co2/energy:,.2f}")
 
 # display graph
