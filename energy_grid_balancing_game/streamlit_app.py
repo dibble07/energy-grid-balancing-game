@@ -63,7 +63,7 @@ grid.set_installed_capacity(
         "nuclear": nuclear * 1e6,
     }
 )
-dispatch, _, totals = grid.calculate_dispatch()
+dispatch, _, _, demand_met, totals = grid.calculate_dispatch()
 dispatch = pd.DataFrame(dispatch)
 totals = pd.DataFrame(totals)
 
@@ -74,14 +74,20 @@ holistic_cost = (
 )
 financial_cost = totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
 co2 = totals.loc["co2"].sum()
+print(demand_met)
+string_colour = "green" if demand_met else "red"
 with st.container():
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.write(f"Holistic cost [EUR/MWh]: {holistic_cost/energy:,.2f}")
+        st.write(
+            f"Holistic cost [EUR/MWh]: :{string_colour}[{holistic_cost/energy:,.2f}]"
+        )
     with col2:
-        st.write(f"Financial cost [EUR/MWh]: {financial_cost/energy:,.2f}")
+        st.write(
+            f"Financial cost [EUR/MWh]: :{string_colour}[{financial_cost/energy:,.2f}]"
+        )
     with col3:
-        st.write(f"Emissions [kgCO2e/MWh]: {co2/energy:,.2f}")
+        st.write(f"Emissions [kgCO2e/MWh]: :{string_colour}[{co2/energy:,.2f}]")
 
 # display graph
 with st.empty():

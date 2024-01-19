@@ -16,12 +16,13 @@ class EnergyMixer:
         """
         # get demand curve
         self.demand = get_demand_curve(week=week)
+        self.time_steps = list(self.demand.keys())
 
         # initialise generators
         self.generators = {
-            k: g(time_steps=list(self.demand.keys()), week=week)
+            k: g(time_steps=self.time_steps, week=week)
             if DataGenerator in inspect.getmro(g)
-            else g(time_steps=list(self.demand.keys()))
+            else g(time_steps=self.time_steps)
             for k, g in generators.items()
         }
 
@@ -40,7 +41,6 @@ class EnergyMixer:
 
     def calculate_dispatch(self):
         "calculate dispatch and spare capacity of each generator"
-
         # initially dispatch levels at minimum for each generator
         dispatch = self.min_power_profiles.copy()
         spare = {}
@@ -57,4 +57,12 @@ class EnergyMixer:
             request = (shortfall + pd.Series(gen.min_power)).to_dict()
             dispatch[name], spare[name], totals[name] = gen.calculate_dispatch(request)
 
-        return dispatch, spare, totals
+        # calculate shortfall
+        shortfall = (
+            (pd.Series(self.demand) - pd.DataFrame(dispatch).sum(axis=1))
+            .clip(lower=0)
+            .to_dict()
+        )
+        demand_met = max(shortfall.values()) <= 0
+
+        return dispatch, spare, shortfall, demand_met, totals
