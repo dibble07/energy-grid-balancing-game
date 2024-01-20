@@ -69,25 +69,23 @@ totals = pd.DataFrame(totals)
 
 # display score(s)
 energy = totals.loc["dispatch_energy"].sum() / 1e6 / 3600
-holistic_cost = (
-    totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]].sum().sum()
-)
+cost = totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]].sum().sum()
 financial_cost = totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
+social_carbon_cost = totals.loc["social_carbon_cost"].sum()
 co2 = totals.loc["co2"].sum()
-print(demand_met)
 string_colour = "green" if demand_met else "red"
 with st.container():
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
-        st.write(
-            f"Holistic cost [EUR/MWh]: :{string_colour}[{holistic_cost/energy:,.2f}]"
+        st.markdown(
+            f"""
+            Cost: :{string_colour}[{cost/energy:,.2f}] EUR/MWh
+            - Financial: :{string_colour}[{financial_cost/energy:,.2f}] EUR/MWh
+            - Emissions: :{string_colour}[{social_carbon_cost/energy:,.2f}] EUR/MWh (:{string_colour}[{co2/energy:,.2f}] kgCO2e/MWh)
+            """
         )
     with col2:
-        st.write(
-            f"Financial cost [EUR/MWh]: :{string_colour}[{financial_cost/energy:,.2f}]"
-        )
-    with col3:
-        st.write(f"Emissions [kgCO2e/MWh]: :{string_colour}[{co2/energy:,.2f}]")
+        st.write("Something about blackouts")
 
 # display graph
 with st.empty():
