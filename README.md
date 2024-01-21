@@ -25,7 +25,10 @@ The user is able to select energy generators from a range of sources (both renew
     - Tips on good/bad of each resource
 - Add/update screencast gif to README
 - More context on user values: "equivalant to 14000 wind turbines"
-- Consider displaying distribution of dispatched/spare energy energy
+- More graphs
+    - Distribution of dispatched/spare/installed energy
+    - Distribution of dispatched energy per source
+    - Tab separated graphs
 - Shrink supplementary graphs and/or make horizontal
 - Calculate optimum score
     - Cache value in streamlit
