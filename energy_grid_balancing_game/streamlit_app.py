@@ -63,7 +63,7 @@ grid.set_installed_capacity(
         "nuclear": nuclear * 1e6,
     }
 )
-dispatch, _, _, demand_met, totals = grid.calculate_dispatch()
+dispatch, _, _, blackouts, totals = grid.calculate_dispatch()
 dispatch = pd.DataFrame(dispatch)
 totals = pd.DataFrame(totals)
 
@@ -73,7 +73,7 @@ cost = totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]].sum().s
 financial_cost = totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
 social_carbon_cost = totals.loc["social_carbon_cost"].sum()
 co2 = totals.loc["co2"].sum()
-string_colour = "green" if demand_met else "red"
+string_colour = "red" if blackouts else "green"
 with st.container():
     col1, col2 = st.columns(2)
     with col1:
@@ -85,7 +85,10 @@ with st.container():
             """
         )
     with col2:
-        st.write("Something about blackouts")
+        blackout_duration = (np.diff(np.array(blackouts)).sum() / 7).components
+        st.write(
+            f"Blackout duration: :{string_colour}[{blackout_duration.hours:02d}:{blackout_duration.minutes:02d}:{blackout_duration.seconds:02d}] /day"
+        )
 
 # display graph
 with st.empty():

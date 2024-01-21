@@ -63,6 +63,27 @@ class EnergyMixer:
             .clip(lower=0)
             .to_dict()
         )
-        demand_met = max(shortfall.values()) <= 0
 
-        return dispatch, spare, shortfall, demand_met, totals
+        # calculate blackouts
+        blackouts_start = []
+        blackouts_end = []
+        blackouts = []
+        for i, (time_steps_pre, time_steps_post) in enumerate(
+            zip(self.time_steps[:-1], self.time_steps[1:])
+        ):
+            shortfall_pre = shortfall[time_steps_pre]
+            shortfall_post = shortfall[time_steps_post]
+            if (shortfall_pre == 0 and shortfall_post > 0) or (
+                i == 0 and shortfall_pre > 0
+            ):
+                blackouts_start.append(time_steps_pre)
+            if (shortfall_pre > 0 and shortfall_post == 0) or (
+                i == len(self.time_steps) - 2 and shortfall_post > 0
+            ):
+                blackouts_end.append(time_steps_post)
+        assert len(blackouts_start) == len(blackouts_end)
+        for start, end in zip(blackouts_start, blackouts_end):
+            assert start < end
+            blackouts.append((start, end))
+
+        return dispatch, spare, shortfall, blackouts, totals
