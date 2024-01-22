@@ -12,7 +12,7 @@ from generators import (
     SolarGenerator,
     WindGenerator,
 )
-from utils import WEEK_MAP
+from utils import WEEK_MAP, get_blackout_icon
 
 # set config
 st.set_page_config(page_title="Energy Grid Game", layout="wide")
@@ -103,6 +103,29 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                 st.write(f"Blackout duration: :{string_colour}[00:00:00] /day")
 
 # display dispatch and demand
+icon_gap = np.timedelta64(12, "h")
+blackout_idx = []
+for blackout in blackouts:
+    blackout = np.array(blackout, dtype="datetime64")
+    midpoint_exact = (blackout[1] - blackout[0]) / 2 + blackout[0]
+    midpoint = grid.time_steps[
+        np.argmin(abs(np.array(grid.time_steps, dtype="datetime64") - midpoint_exact))
+    ]
+    n_icon = max(1, int(np.floor(np.diff(blackout) / icon_gap)[0]))
+    blackout_idx.extend(
+        np.arange(
+            midpoint - (n_icon - 1) / 2 * icon_gap,
+            midpoint + (n_icon - 1) / 2 * icon_gap + icon_gap,
+            icon_gap,
+        )
+    )
+blackouts_disp_all = pd.DataFrame(
+    data={
+        "time": blackout_idx,
+        "demand": [grid.demand[pd.Timestamp(i)] / 1e6 for i in blackout_idx],
+        "icon": ["⚡"] * len(blackout_idx),
+    }
+)
 with st.empty():
     for i in range(len(dispatch)):
         # data to plot
@@ -118,8 +141,16 @@ with st.empty():
         demand_disp = pd.Series(grid.demand).rename("Demand").copy() / 1e6
         demand_disp.iloc[i:] = np.nan
         demand_disp = pd.melt(demand_disp.reset_index(), id_vars=["index"])
+        blackouts_disp = blackouts_disp_all.loc[
+            blackouts_disp_all["time"] <= grid.time_steps[i]
+        ]
 
         # chart layers
+        blackout_chart = (
+            alt.Chart(blackouts_disp)
+            .mark_text(size=18, baseline="middle")
+            .encode(alt.X("time"), alt.Y("demand"), alt.Text("icon"))
+        )
         dispatch_chart = (
             alt.Chart(dispatch_disp)
             .mark_area()
@@ -152,6 +183,7 @@ with st.empty():
             alt.layer(
                 dispatch_chart,
                 demand_chart,
+                blackout_chart,
             ),
             use_container_width=True,
         )

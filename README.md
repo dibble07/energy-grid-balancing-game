@@ -18,22 +18,23 @@ The user is able to select energy generators from a range of sources (both renew
     - `streamlit run energy_grid_balancing_game/streamlit_app.py`
 
 ## To do
-- Plot blackout emoji above demand at times of blackouts
 - Describe methodology in sidebar
     - Assume perfect ramping
     - Ignore ability to turn off gas/coal intermittently
     - Tips on good/bad of each resource
 - Add/update screencast gif to README
-- Deploy to streamlit
+- Move to do list to issues on repo
+- Deploy to streamlit and refactor path references
+- Share on Slack
 - More context on user values: "equivalant to 14000 wind turbines"
+- Calculate optimum score
+    - Cache value in streamlit
+    - With and without storage
 - More graphs
     - Distribution of dispatched/spare/installed energy
     - Distribution of dispatched energy per source
     - Tab separated graphs
     - Shrink and/or make horizontal
-- Calculate optimum score
-    - Cache value in streamlit
-    - With and without storage
 - Add storage entity
     - Hydro, hyrogen or battery
     - Green energy only?
