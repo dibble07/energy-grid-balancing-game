@@ -1,3 +1,4 @@
+import base64
 import os
 
 import pandas as pd
@@ -37,6 +38,7 @@ WEEK_MAP = (
 )
 
 
+# get demand power profile
 def get_demand_curve(week):
     # extract timestamp of start of week
     week_start = WEEK_MAP.loc[WEEK_MAP["week"] == week, "datetime"].values[0]
@@ -47,3 +49,17 @@ def get_demand_curve(week):
     ].to_dict()
 
     return demand
+
+
+# get blackout icon
+def get_blackout_icon():
+    image_path = "/Users/RDIB/Documents/GitHub/energy-grid-balancing-game/energy_grid_balancing_game/electricity.png"
+    print(
+        os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "electricity.png",
+        )
+    )
+    with open(image_path, "rb") as f:
+        encoded_image = base64.b64encode(f.read()).decode()
+    return encoded_image
