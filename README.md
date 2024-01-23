@@ -18,10 +18,6 @@ The user is able to select energy generators from a range of sources (both renew
     - `streamlit run energy_grid_balancing_game/streamlit_app.py`
 
 ## To do
-- Describe methodology in sidebar
-    - Assume perfect ramping
-    - Ignore ability to turn off gas/coal intermittently
-    - Tips on good/bad of each resource
 - Add/update screencast gif to README
 - Move to do list to issues on repo
 - Deploy to streamlit and refactor path references
