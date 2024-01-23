@@ -120,7 +120,7 @@ grid.set_installed_capacity(
 )
 (
     dispatch,
-    _,
+    spare,
     shortfall,
     oversupply,
     shortfall_windows,
@@ -128,6 +128,7 @@ grid.set_installed_capacity(
     totals,
 ) = grid.calculate_dispatch()
 dispatch = pd.DataFrame(dispatch)
+spare = pd.DataFrame(spare)
 totals = pd.DataFrame(totals)
 
 # display score(s)
@@ -298,46 +299,85 @@ with st.empty():
         )
 
 # display cost breakdown graph
-if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
-    with st.empty():
-        # data to plot
-        costs_disp = (
-            totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
-            / (totals.loc["dispatch_energy"] / 1e6 / 3600)
-        ).fillna(0)
-        costs_text = costs_disp.sum().to_frame("total_cost")
-        costs_text["percent"] = (
-            totals.loc["dispatch_energy"] / totals.loc["dispatch_energy"].sum() * 100
-        )
-        costs_text.reset_index(inplace=True)
-        costs_text["index"] = costs_text["index"].map(
-            lambda x: x.replace("_", " ").title()
-        )
-        costs_disp.rename(
-            index={"capex": "installation", "opex": "operation"}, inplace=True
-        )
-        costs_disp = pd.melt(costs_disp.reset_index(), id_vars=["index"])
-        cost_order = ["capex", "opex", "carbon_tax", "social_carbon_cost"]
-        costs_disp["order"] = costs_disp["index"].map(
-            {k: v for v, k in enumerate(cost_order)}
-        )
-        costs_disp[["index", "variable"]] = costs_disp[["index", "variable"]].map(
-            lambda x: x.replace("_", " ").title()
-        )
-
-        # costs chart
-        costs_chart = (
-            alt.Chart(costs_disp)
-            .mark_bar()
-            .encode(
-                alt.Y("variable", title="", axis=alt.Axis(labelAngle=0)),
-                alt.X("value", title="Cost [EUR/MWh]", stack=True),
-                alt.Color("index", title="", type="nominal", sort=cost_order),
-                alt.Order(field="order"),
-                opacity={"value": 0.7},
-                tooltip=alt.value(None),
+tab1, tab2 = st.tabs(["Cost breakdown", "Spare capacity"])
+with tab1:
+    if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
+        with st.empty():
+            # data to plot
+            costs_disp = (
+                totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
+                / (totals.loc["dispatch_energy"] / 1e6 / 3600)
+            ).fillna(0)
+            costs_text = costs_disp.sum().to_frame("total_cost")
+            costs_text["percent"] = (
+                totals.loc["dispatch_energy"]
+                / totals.loc["dispatch_energy"].sum()
+                * 100
             )
-        )
+            costs_text.reset_index(inplace=True)
+            costs_text["index"] = costs_text["index"].map(
+                lambda x: x.replace("_", " ").title()
+            )
+            costs_disp.rename(
+                index={"capex": "installation", "opex": "operation"}, inplace=True
+            )
+            costs_disp = pd.melt(costs_disp.reset_index(), id_vars=["index"])
+            cost_order = ["capex", "opex", "carbon_tax", "social_carbon_cost"]
+            costs_disp["order"] = costs_disp["index"].map(
+                {k: v for v, k in enumerate(cost_order)}
+            )
+            costs_disp[["index", "variable"]] = costs_disp[["index", "variable"]].map(
+                lambda x: x.replace("_", " ").title()
+            )
 
-        # layered chart
-        st.altair_chart(costs_chart, use_container_width=True)
+            # costs chart
+            costs_chart = (
+                alt.Chart(costs_disp)
+                .mark_bar()
+                .encode(
+                    alt.Y("variable", title="", axis=alt.Axis(labelAngle=0)),
+                    alt.X("value", title="Cost [EUR/MWh]", stack=True),
+                    alt.Color("index", title="", type="nominal", sort=cost_order),
+                    alt.Order(field="order"),
+                    opacity={"value": 0.7},
+                    tooltip=alt.value(None),
+                )
+            )
+
+            # layered chart
+            st.altair_chart(costs_chart, use_container_width=True)
+with tab2:
+    if spare.max().max() > 0:
+        with st.empty():
+            # data to plot
+            spare_disp = spare.copy() / 1e6
+            spare_disp = pd.melt(spare_disp.reset_index(), id_vars=["index"])
+            spare_disp["order"] = spare_disp["variable"].map(
+                {"solar": 1, "wind": 2, "nuclear": 0, "gas": 3, "coal": 4}
+            )
+            spare_disp["variable"] = spare_disp["variable"].map(
+                lambda x: x.replace("_", " ").title()
+            )
+
+            # chart
+            spare_chart = (
+                alt.Chart(spare_disp)
+                .mark_area()
+                .encode(
+                    alt.X("index", title="", axis=alt.Axis(tickCount="day")),
+                    alt.Y("value", title="Power [MW]"),
+                    alt.Color(
+                        "variable",
+                        title="",
+                        type="nominal",
+                        sort=list(grid.generators.keys()),
+                    ),
+                    alt.Order(field="order"),
+                    opacity={"value": 0.7},
+                    tooltip=alt.value(None),
+                )
+            )
+            st.altair_chart(
+                spare_chart,
+                use_container_width=True,
+            )
