@@ -89,14 +89,14 @@ class EnergyMixer:
                     {k: v * scale for k, v in zip(self.generators.keys(), x)}
                 )
                 _, _, shortfall, _, _, _ = self.calculate_dispatch()
-                return -1 * mean(shortfall.values())
+                return -1 * mean(shortfall.values()) / 1e6 / 3600 / 7
 
             def cons_oversupply(x):
                 self.set_installed_capacity(
                     {k: v * scale for k, v in zip(self.generators.keys(), x)}
                 )
                 _, _, _, oversupply, _, _ = self.calculate_dispatch()
-                return -1 * mean(oversupply.values())
+                return -1 * mean(oversupply.values()) / 1e6 / 3600 / 7
 
             # minimise
             res = minimize(
@@ -107,13 +107,17 @@ class EnergyMixer:
                     {"type": "ineq", "fun": cons_shortfall},
                     {"type": "ineq", "fun": cons_oversupply},
                 ],
+                method="SLSQP",
+                options={"ftol": 10**-4},
             )
             if res.success:
                 self._optimum = {
-                    k: v * scale for k, v in zip(self.generators.keys(), res.x)
+                    "installed_capacity": {
+                        k: v * scale for k, v in zip(self.generators.keys(), res.x)
+                    },
+                    "score": res.fun,
                 }
             else:
-                print(res)
                 raise ValueError(
                     f"Optimiser failed - status:{res.status} message:{res.message}"
                 )
