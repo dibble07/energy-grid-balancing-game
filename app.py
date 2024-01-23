@@ -69,10 +69,20 @@ Your score is determined by the cost per unit of energy produced. The cost compr
         )
     with st.expander("Generation sources", expanded=True):
         coal = st.number_input("Coal (MW)", min_value=0, value=0)
+        if coal > 0:
+            st.markdown(f"{coal/500:,.1f} Coal Power Stations")
         gas = st.number_input("Gas (MW)", min_value=0, value=0)
+        if gas > 0:
+            st.markdown(f"{gas/470:,.1f} Gas Power Stations")
         nuclear = st.number_input("Nuclear (MW)", min_value=0, value=0)
+        if nuclear > 0:
+            st.markdown(f"{nuclear/990:,.1f} Nuclear Power Stations")
         solar = st.number_input("Solar (MW)", min_value=0, value=0)
+        if solar > 0:
+            st.markdown(f"{solar/(1/1000)/7300:,.0f} Football pitches")
         wind = st.number_input("Wind (MW)", min_value=0, value=0)
+        if wind > 0:
+            st.markdown(f"{wind/6.8:,.0f} Offshore Wind Turbines")
     with st.expander("Week commencing", expanded=False):
         week_dt = st.selectbox(
             " ", week_map["date"].values, index=st.session_state["week_ind"]
@@ -156,11 +166,11 @@ blackouts_disp_all = pd.DataFrame(
     data={
         "time": blackout_idx,
         "demand": [grid.demand[pd.Timestamp(i)] / 1e6 for i in blackout_idx],
-        "icon": ["⚡"] * len(blackout_idx),
+        "icon": ["⚠️"] * len(blackout_idx),
     }
 )
 with st.empty():
-    for i in range(len(dispatch)):
+    for i in range(0, len(dispatch), 4):
         # data to plot
         dispatch_disp = dispatch.copy() / 1e6
         dispatch_disp.iloc[i:] = np.nan

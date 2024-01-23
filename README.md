@@ -20,8 +20,6 @@ The user is able to select energy generators from a range of sources (both renew
     - `streamlit run app.py`
 
 ## To do
-- Deploy to streamlit and refactor path references
-- More context on user values: "equivalant to 14000 wind turbines"
 - Calculate optimum score
     - Cache value in streamlit
     - With and without storage
@@ -31,6 +29,7 @@ The user is able to select energy generators from a range of sources (both renew
     - Distribution of dispatched energy per source
     - Tab separated graphs
     - Shrink and/or make horizontal
+    - Contextual values as pictogram
 - Add storage entity
     - Hydro, hyrogen or battery
     - Green energy only?
