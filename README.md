@@ -24,10 +24,5 @@ The user is able to select energy generators from a range of sources (both renew
 ## To do
 - Add battery storage entity
     - Display surplus energy
-- More graphs
-    - Distribution of dispatched/spare/installed energy
-    - Distribution of dispatched energy per source
-    - Tab separated graphs
-    - Shrink and/or make horizontal
 - Update screencast gif to README
 - Share on Slack

@@ -12,7 +12,7 @@ from src.generators import (
     SolarGenerator,
     WindGenerator,
 )
-from src.utils import WEEK_MAP, total_energy
+from src.utils import WEEK_MAP, total_energy, get_windows_range
 
 # set config
 st.set_page_config(page_title="Energy Grid Game", layout="wide")
@@ -82,11 +82,10 @@ Your score is determined by the cost per unit of energy produced. The cost compr
         wind = st.number_input("Wind (MW)", min_value=0, value=0)
         if wind > 0:
             st.markdown(f"{wind/6.8:,.0f} Offshore Wind Turbines")
-    with st.expander("Week commencing", expanded=False):
+    with st.expander("Week commencing", expanded=True):
         week_dt = st.selectbox(
             " ", week_map["date"].values, index=st.session_state["week_ind"]
         )
-
 st.session_state["week_ind"] = int(week_map.loc[week_map["date"] == week_dt].index[0])
 week_no = week_map.loc[st.session_state["week_ind"], "week"]
 
@@ -105,7 +104,9 @@ max_demand = max(grid.demand.values())
 
 # initialise optimum score
 if "grid_optimum" not in st.session_state:
-    st.session_state["grid_optimum"] = grid.optimum
+    st.session_state["grid_optimum"] = {}
+if week_no not in st.session_state["grid_optimum"]:
+    st.session_state["grid_optimum"][week_no] = grid.optimum
 
 # run simulation
 grid.set_installed_capacity(
@@ -117,8 +118,17 @@ grid.set_installed_capacity(
         "nuclear": nuclear * 1e6,
     }
 )
-dispatch, _, _, oversupply, blackouts, totals = grid.calculate_dispatch()
+(
+    dispatch,
+    spare,
+    shortfall,
+    oversupply,
+    shortfall_windows,
+    oversupply_windows,
+    totals,
+) = grid.calculate_dispatch()
 dispatch = pd.DataFrame(dispatch)
+spare = pd.DataFrame(spare)
 totals = pd.DataFrame(totals)
 
 # display score(s)
@@ -140,31 +150,23 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
     financial_cost = totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
     social_carbon_cost = totals.loc["social_carbon_cost"].sum()
     co2 = totals.loc["co2"].sum()
-    string_colour = "red" if blackouts or not np.isclose(oversupply, 0) else "green"
+    string_colour = (
+        "red" if shortfall_windows or not np.isclose(oversupply, 0) else "green"
+    )
     with st.container():
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2 = st.columns(2)
         with col1:
             st.markdown(
                 f"""
                 Cost: :{string_colour}[{cost/energy:,.2f}] EUR/MWh
                 - Financial: :{string_colour}[{financial_cost/energy:,.2f}] EUR/MWh
-                - Emissions: :{string_colour}[{social_carbon_cost/energy:,.2f}] EUR/MWh
-                - Social: :{string_colour}[{co2/energy:,.2f}] kgCO2e/MWh
+                - Emissions: :{string_colour}[{co2/energy:,.2f}] kgCO2e/MWh
+                - Social: :{string_colour}[{social_carbon_cost/energy:,.2f}] EUR/MWh
                 """
             )
         with col2:
-            if blackouts:
-                blackout_duration = (np.diff(np.array(blackouts)).sum() / 7).components
-                st.write(
-                    f"Blackout duration: :{string_colour}[{(blackout_duration.hours+blackout_duration.days*24):02d}:{blackout_duration.minutes:02d}:{blackout_duration.seconds:02d}] /day"
-                )
-            else:
-                st.write(f"Blackout duration: :{string_colour}[00:00:00] /day")
-        with col3:
-            st.write(f"Oversupply: :{string_colour}[{oversupply:,.0f}] MWh")
-        with col4:
-            diff = cost / energy - st.session_state["grid_optimum"]["score"]
-            perc = 100 * diff / st.session_state["grid_optimum"]["score"]
+            diff = cost / energy - st.session_state["grid_optimum"][week_no]["score"]
+            perc = 100 * diff / st.session_state["grid_optimum"][week_no]["score"]
             if perc > 25:
                 opt_string_colour = "red"
             elif perc > 10:
@@ -173,41 +175,51 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                 opt_string_colour = "green"
             st.markdown(
                 f"""
-                Optimum cost: :{opt_string_colour}[{st.session_state["grid_optimum"]["score"]:,.2f}] EUR/MWh
+                Optimum cost: :{opt_string_colour}[{st.session_state["grid_optimum"][week_no]["score"]:,.2f}] EUR/MWh
                 - Difference: :{opt_string_colour}[{diff:,.2f}] EUR/MWh
                 - Percentage: :{opt_string_colour}[{perc:,.2f}] %
                 """
             )
             with st.expander("Generators", expanded=False):
-                for k, v in st.session_state["grid_optimum"][
+                for k, v in st.session_state["grid_optimum"][week_no][
                     "installed_capacity"
                 ].items():
                     st.write(f"{k.title()}: {v/1e6:,.0f} MW")
 
 # display dispatch and demand
 icon_gap = np.timedelta64(12, "h")
-blackout_idx = []
-for blackout in blackouts:
-    blackout = np.array(blackout, dtype="datetime64")
-    midpoint_exact = (blackout[1] - blackout[0]) / 2 + blackout[0]
-    midpoint = grid.time_steps[
-        np.argmin(abs(np.array(grid.time_steps, dtype="datetime64") - midpoint_exact))
-    ]
-    n_icon = max(1, int(np.floor(np.diff(blackout) / icon_gap)[0]))
-    blackout_idx.extend(
-        np.arange(
-            midpoint - (n_icon - 1) / 2 * icon_gap,
-            midpoint + (n_icon - 1) / 2 * icon_gap + icon_gap,
-            icon_gap,
-        )
-    )
-blackouts_disp_all = pd.DataFrame(
-    data={
-        "time": blackout_idx,
-        "demand": [grid.demand[pd.Timestamp(i)] / 1e6 for i in blackout_idx],
-        "icon": ["⚠️"] * len(blackout_idx),
-    }
+shortfall_windows_idx = get_windows_range(shortfall_windows, grid.time_steps, icon_gap)
+oversupply_windows_idx = get_windows_range(
+    oversupply_windows, grid.time_steps, icon_gap
 )
+shortfall_windows_disp = (
+    pd.DataFrame(
+        data={
+            "time": shortfall_windows_idx,
+            "demand": [
+                grid.demand[pd.Timestamp(i)] / 1e6 for i in shortfall_windows_idx
+            ],
+            "icon": ["⚠️"] * len(shortfall_windows_idx),
+        }
+    )
+    if shortfall_windows
+    else pd.DataFrame()
+)
+oversupply_windows_disp = (
+    pd.DataFrame(
+        data={
+            "time": oversupply_windows_idx,
+            "demand": [
+                dispatch.sum(axis=1).loc[pd.Timestamp(i)] / 1e6
+                for i in oversupply_windows_idx
+            ],
+            "icon": ["⚡"] * len(oversupply_windows_idx),
+        }
+    )
+    if oversupply_windows
+    else pd.DataFrame()
+)
+windows_disp = pd.concat([shortfall_windows_disp, oversupply_windows_disp])
 with st.empty():
     for i in range(0, len(dispatch), 4):
         # data to plot
@@ -223,15 +235,15 @@ with st.empty():
         demand_disp = pd.Series(grid.demand).rename("Demand").copy() / 1e6
         demand_disp.iloc[i:] = np.nan
         demand_disp = pd.melt(demand_disp.reset_index(), id_vars=["index"])
-        if not blackouts_disp_all.empty:
-            blackouts_disp = blackouts_disp_all.loc[
-                blackouts_disp_all["time"] <= grid.time_steps[i]
+        if not windows_disp.empty:
+            shortfall_windows_disp = windows_disp.loc[
+                windows_disp["time"] <= grid.time_steps[i]
             ]
 
         # chart layers
-        if not blackouts_disp_all.empty:
-            blackout_chart = (
-                alt.Chart(blackouts_disp)
+        if not windows_disp.empty:
+            shortfall_windows_chart = (
+                alt.Chart(windows_disp)
                 .mark_text(size=18, baseline="middle")
                 .encode(
                     alt.X("time"),
@@ -270,11 +282,11 @@ with st.empty():
         )
 
         # layered chart
-        if not blackouts_disp_all.empty:
+        if not windows_disp.empty:
             layer_chart = alt.layer(
                 dispatch_chart,
                 demand_chart,
-                blackout_chart,
+                shortfall_windows_chart,
             )
         else:
             layer_chart = alt.layer(
@@ -287,64 +299,85 @@ with st.empty():
         )
 
 # display cost breakdown graph
-if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
-    with st.empty():
-        # data to plot
-        costs_disp = (
-            totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
-            / (totals.loc["dispatch_energy"] / 1e6 / 3600)
-        ).fillna(0)
-        costs_text = costs_disp.sum().to_frame("total_cost")
-        costs_text["percent"] = (
-            totals.loc["dispatch_energy"] / totals.loc["dispatch_energy"].sum() * 100
-        )
-        costs_text.reset_index(inplace=True)
-        costs_text["index"] = costs_text["index"].map(
-            lambda x: x.replace("_", " ").title()
-        )
-        costs_disp.rename(
-            index={"capex": "installation", "opex": "operation"}, inplace=True
-        )
-        costs_disp = pd.melt(costs_disp.reset_index(), id_vars=["index"])
-        cost_order = ["capex", "opex", "carbon_tax", "social_carbon_cost"]
-        costs_disp["order"] = costs_disp["index"].map(
-            {k: v for v, k in enumerate(cost_order)}
-        )
-        costs_disp[["index", "variable"]] = costs_disp[["index", "variable"]].map(
-            lambda x: x.replace("_", " ").title()
-        )
-
-        # costs chart
-        costs_chart = (
-            alt.Chart(costs_disp)
-            .mark_bar()
-            .encode(
-                alt.X("variable", title="", axis=alt.Axis(labelAngle=0)),
-                alt.Y("value", title="Cost [EUR/MWh]", stack=True),
-                alt.Color("index", title="", type="nominal", sort=cost_order),
-                alt.Order(field="order"),
-                opacity={"value": 0.7},
-                tooltip=alt.value(None),
+tab1, tab2 = st.tabs(["Cost breakdown", "Spare capacity"])
+with tab1:
+    if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
+        with st.empty():
+            # data to plot
+            costs_disp = (
+                totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
+                / (totals.loc["dispatch_energy"] / 1e6 / 3600)
+            ).fillna(0)
+            costs_text = costs_disp.sum().to_frame("total_cost")
+            costs_text["percent"] = (
+                totals.loc["dispatch_energy"]
+                / totals.loc["dispatch_energy"].sum()
+                * 100
             )
-        )
-
-        # annotation chart
-        annotate_chart = (
-            alt.Chart(costs_text)
-            .mark_text(baseline="bottom", color="white")
-            .encode(
-                alt.X("index", title=""),
-                alt.Y("total_cost", title=""),
-                alt.Text("percent", format=".1f"),
-                tooltip=alt.value(None),
+            costs_text.reset_index(inplace=True)
+            costs_text["index"] = costs_text["index"].map(
+                lambda x: x.replace("_", " ").title()
             )
-        )
+            costs_disp.rename(
+                index={"capex": "installation", "opex": "operation"}, inplace=True
+            )
+            costs_disp = pd.melt(costs_disp.reset_index(), id_vars=["index"])
+            cost_order = ["capex", "opex", "carbon_tax", "social_carbon_cost"]
+            costs_disp["order"] = costs_disp["index"].map(
+                {k: v for v, k in enumerate(cost_order)}
+            )
+            costs_disp[["index", "variable"]] = costs_disp[["index", "variable"]].map(
+                lambda x: x.replace("_", " ").title()
+            )
 
-        # layered chart
-        st.altair_chart(
-            alt.layer(
-                costs_chart,
-                annotate_chart,
-            ),
-            use_container_width=True,
-        )
+            # costs chart
+            costs_chart = (
+                alt.Chart(costs_disp)
+                .mark_bar()
+                .encode(
+                    alt.Y("variable", title="", axis=alt.Axis(labelAngle=0)),
+                    alt.X("value", title="Cost [EUR/MWh]", stack=True),
+                    alt.Color("index", title="", type="nominal", sort=cost_order),
+                    alt.Order(field="order"),
+                    opacity={"value": 0.7},
+                    tooltip=alt.value(None),
+                )
+            )
+
+            # layered chart
+            st.altair_chart(costs_chart, use_container_width=True)
+with tab2:
+    if spare.max().max() > 0:
+        with st.empty():
+            # data to plot
+            spare_disp = spare.copy() / 1e6
+            spare_disp = pd.melt(spare_disp.reset_index(), id_vars=["index"])
+            spare_disp["order"] = spare_disp["variable"].map(
+                {"solar": 1, "wind": 2, "nuclear": 0, "gas": 3, "coal": 4}
+            )
+            spare_disp["variable"] = spare_disp["variable"].map(
+                lambda x: x.replace("_", " ").title()
+            )
+
+            # chart
+            spare_chart = (
+                alt.Chart(spare_disp)
+                .mark_area()
+                .encode(
+                    alt.X("index", title="", axis=alt.Axis(tickCount="day")),
+                    alt.Y("value", title="Power [MW]"),
+                    alt.Color(
+                        "variable",
+                        title="",
+                        type="nominal",
+                        sort=list(grid.generators.keys()),
+                    ),
+                    alt.Order(field="order"),
+                    opacity={"value": 0.7},
+                    tooltip=alt.value(None),
+                )
+            )
+            st.altair_chart(
+                spare_chart,
+                use_container_width=True,
+            )

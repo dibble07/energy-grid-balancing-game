@@ -5,7 +5,7 @@ import pandas as pd
 from scipy.optimize import minimize
 
 from src.generators import DataGenerator
-from src.utils import get_demand_curve, total_energy
+from src.utils import get_demand_curve, total_energy, get_windows
 
 
 class EnergyMixer:
@@ -59,7 +59,7 @@ class EnergyMixer:
                 self.set_installed_capacity(
                     {k: v * scale for k, v in zip(self.generators.keys(), x)}
                 )
-                dispatch, _, _, _, _, totals = self.calculate_dispatch()
+                dispatch, _, _, _, _, _, totals = self.calculate_dispatch()
                 cost = (
                     pd.DataFrame(totals)
                     .loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
@@ -88,14 +88,14 @@ class EnergyMixer:
                 self.set_installed_capacity(
                     {k: v * scale for k, v in zip(self.generators.keys(), x)}
                 )
-                _, _, shortfall, _, _, _ = self.calculate_dispatch()
+                _, _, shortfall, _, _, _, _ = self.calculate_dispatch()
                 return -1 * mean(shortfall.values()) / 1e6 / 3600 / 7
 
             def cons_oversupply(x):
                 self.set_installed_capacity(
                     {k: v * scale for k, v in zip(self.generators.keys(), x)}
                 )
-                _, _, _, oversupply, _, _ = self.calculate_dispatch()
+                _, _, _, oversupply, _, _, _ = self.calculate_dispatch()
                 return -1 * mean(oversupply.values()) / 1e6 / 3600 / 7
 
             # minimise
@@ -108,7 +108,7 @@ class EnergyMixer:
                     {"type": "ineq", "fun": cons_oversupply},
                 ],
                 method="SLSQP",
-                options={"ftol": 10**-4},
+                options={"ftol": 10**-3},
             )
             if res.success:
                 self._optimum = {
@@ -156,27 +156,15 @@ class EnergyMixer:
             .clip(lower=0)
             .to_dict()
         )
+        shortfall_windows = get_windows(shortfall, self.time_steps)
+        oversupply_windows = get_windows(oversupply, self.time_steps)
 
-        # calculate blackouts
-        blackouts_start = []
-        blackouts_end = []
-        blackouts = []
-        for i, (time_steps_pre, time_steps_post) in enumerate(
-            zip(self.time_steps[:-1], self.time_steps[1:])
-        ):
-            shortfall_pre = shortfall[time_steps_pre]
-            shortfall_post = shortfall[time_steps_post]
-            if (shortfall_pre == 0 and shortfall_post > 0) or (
-                i == 0 and shortfall_pre > 0
-            ):
-                blackouts_start.append(time_steps_pre)
-            if (shortfall_pre > 0 and shortfall_post == 0) or (
-                i == len(self.time_steps) - 2 and shortfall_post > 0
-            ):
-                blackouts_end.append(time_steps_post)
-        assert len(blackouts_start) == len(blackouts_end)
-        for start, end in zip(blackouts_start, blackouts_end):
-            assert start < end
-            blackouts.append((start, end))
-
-        return dispatch, spare, shortfall, oversupply, blackouts, totals
+        return (
+            dispatch,
+            spare,
+            shortfall,
+            oversupply,
+            shortfall_windows,
+            oversupply_windows,
+            totals,
+        )
