@@ -16,6 +16,7 @@ altair = "^5"
 numpy = "^1"
 openpyxl = "^3"
 black = {version = "^23", extras = ["jupyter"]}
+scipy = "^1"
 
 [tool.poetry.group.dev.dependencies]
 icecream = "^2"

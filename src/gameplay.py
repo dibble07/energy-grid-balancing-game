@@ -1,9 +1,11 @@
 import inspect
+from statistics import mean
 
 import pandas as pd
+from scipy.optimize import minimize
 
 from src.generators import DataGenerator
-from src.utils import get_demand_curve
+from src.utils import get_demand_curve, total_energy
 
 
 class EnergyMixer:
@@ -39,6 +41,88 @@ class EnergyMixer:
     def min_power_profiles(self) -> dict:
         return {k: g.min_power for k, g in self.generators.items()}
 
+    @property
+    def optimum(self) -> dict:
+        # calculate optimum if not already stored
+        if not hasattr(self, "_optimum"):
+
+            # save current install capacity
+            original_installed_capacity = {
+                k: g.installed_capacity for k, g in self.generators.items()
+            }
+
+            # set scaling factor
+            scale = mean(self.demand.values())
+
+            # define objectives and constraints
+            def obj(x):
+                self.set_installed_capacity(
+                    {k: v * scale for k, v in zip(self.generators.keys(), x)}
+                )
+                dispatch, _, _, _, _, totals = self.calculate_dispatch()
+                cost = (
+                    pd.DataFrame(totals)
+                    .loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
+                    .sum()
+                    .sum()
+                )
+                useful_energy = (
+                    total_energy(
+                        pd.concat(
+                            [
+                                pd.DataFrame(dispatch).sum(axis=1),
+                                pd.Series(self.demand),
+                            ],
+                            axis=1,
+                        )
+                        .min(axis=1)
+                        .values,
+                        self.time_steps,
+                    )
+                    / 1e6
+                    / 3600
+                )
+                return cost / useful_energy
+
+            def cons_shortfall(x):
+                self.set_installed_capacity(
+                    {k: v * scale for k, v in zip(self.generators.keys(), x)}
+                )
+                _, _, shortfall, _, _, _ = self.calculate_dispatch()
+                return -1 * mean(shortfall.values())
+
+            def cons_oversupply(x):
+                self.set_installed_capacity(
+                    {k: v * scale for k, v in zip(self.generators.keys(), x)}
+                )
+                _, _, _, oversupply, _, _ = self.calculate_dispatch()
+                return -1 * mean(oversupply.values())
+
+            # minimise
+            res = minimize(
+                fun=obj,
+                x0=[1 / len(self.generators)] * len(self.generators),
+                bounds=[(0, None)] * len(self.generators),
+                constraints=[
+                    {"type": "ineq", "fun": cons_shortfall},
+                    {"type": "ineq", "fun": cons_oversupply},
+                ],
+            )
+            if res.success:
+                self._optimum = {
+                    k: v * scale for k, v in zip(self.generators.keys(), res.x)
+                }
+            else:
+                print(res)
+                raise ValueError(
+                    f"Optimiser failed - status:{res.status} message:{res.message}"
+                )
+
+            # return to original installed capacity
+            self.set_installed_capacity(original_installed_capacity)
+
+        return self._optimum
+
     def calculate_dispatch(self):
         "calculate dispatch and spare capacity of each generator"
         # initially dispatch levels at minimum for each generator
@@ -57,9 +141,14 @@ class EnergyMixer:
             request = (shortfall + pd.Series(gen.min_power)).to_dict()
             dispatch[name], spare[name], totals[name] = gen.calculate_dispatch(request)
 
-        # calculate shortfall
+        # calculate shortfall and oversupply
         shortfall = (
             (pd.Series(self.demand) - pd.DataFrame(dispatch).sum(axis=1))
+            .clip(lower=0)
+            .to_dict()
+        )
+        oversupply = (
+            (pd.DataFrame(dispatch).sum(axis=1) - pd.Series(self.demand))
             .clip(lower=0)
             .to_dict()
         )
@@ -86,4 +175,4 @@ class EnergyMixer:
             assert start < end
             blackouts.append((start, end))
 
-        return dispatch, spare, shortfall, blackouts, totals
+        return dispatch, spare, shortfall, oversupply, blackouts, totals

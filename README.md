@@ -23,8 +23,9 @@ The user is able to select energy generators from a range of sources (both renew
 
 ## To do
 - Calculate optimum score
+    - Compare solvers for speed/results
+    - Reduce tolerance
     - Cache value in streamlit
-    - With and without storage
     - Optimum over entire year
 - More graphs
     - Distribution of dispatched/spare/installed energy
