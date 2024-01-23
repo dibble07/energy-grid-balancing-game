@@ -22,11 +22,10 @@ The user is able to select energy generators from a range of sources (both renew
     - `streamlit run app.py`
 
 ## To do
+- More graphs
+    - Distribution of spare energy
+    - Tab separated graphs
 - Add battery storage entity
     - Display surplus energy
-- More graphs
-    - Distribution of dispatched/spare/installed energy
-    - Distribution of dispatched energy per source
-    - Tab separated graphs
 - Update screencast gif to README
 - Share on Slack

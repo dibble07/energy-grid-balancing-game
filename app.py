@@ -82,7 +82,7 @@ Your score is determined by the cost per unit of energy produced. The cost compr
         wind = st.number_input("Wind (MW)", min_value=0, value=0)
         if wind > 0:
             st.markdown(f"{wind/6.8:,.0f} Offshore Wind Turbines")
-    with st.expander("Week commencing", expanded=False):
+    with st.expander("Week commencing", expanded=True):
         week_dt = st.selectbox(
             " ", week_map["date"].values, index=st.session_state["week_ind"]
         )
@@ -104,7 +104,9 @@ max_demand = max(grid.demand.values())
 
 # initialise optimum score
 if "grid_optimum" not in st.session_state:
-    st.session_state["grid_optimum"] = grid.optimum
+    st.session_state["grid_optimum"] = {}
+if week_no not in st.session_state["grid_optimum"]:
+    st.session_state["grid_optimum"][week_no] = grid.optimum
 
 # run simulation
 grid.set_installed_capacity(
@@ -162,8 +164,8 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                 """
             )
         with col2:
-            diff = cost / energy - st.session_state["grid_optimum"]["score"]
-            perc = 100 * diff / st.session_state["grid_optimum"]["score"]
+            diff = cost / energy - st.session_state["grid_optimum"][week_no]["score"]
+            perc = 100 * diff / st.session_state["grid_optimum"][week_no]["score"]
             if perc > 25:
                 opt_string_colour = "red"
             elif perc > 10:
@@ -172,13 +174,13 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                 opt_string_colour = "green"
             st.markdown(
                 f"""
-                Optimum cost: :{opt_string_colour}[{st.session_state["grid_optimum"]["score"]:,.2f}] EUR/MWh
+                Optimum cost: :{opt_string_colour}[{st.session_state["grid_optimum"][week_no]["score"]:,.2f}] EUR/MWh
                 - Difference: :{opt_string_colour}[{diff:,.2f}] EUR/MWh
                 - Percentage: :{opt_string_colour}[{perc:,.2f}] %
                 """
             )
             with st.expander("Generators", expanded=False):
-                for k, v in st.session_state["grid_optimum"][
+                for k, v in st.session_state["grid_optimum"][week_no][
                     "installed_capacity"
                 ].items():
                     st.write(f"{k.title()}: {v/1e6:,.0f} MW")
