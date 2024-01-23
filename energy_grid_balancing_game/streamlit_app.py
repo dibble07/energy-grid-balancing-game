@@ -16,13 +16,13 @@ from utils import WEEK_MAP, get_blackout_icon
 
 # set config
 st.set_page_config(page_title="Energy Grid Game", layout="wide")
-hide_streamlit_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            </style>
-            """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+# hide_streamlit_style = """
+#             <style>
+#             #MainMenu {visibility: hidden;}
+#             footer {visibility: hidden;}
+#             </style>
+#             """
+# st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # set header
 st.header("Energy Grid Game")
@@ -174,16 +174,23 @@ with st.empty():
         demand_disp = pd.Series(grid.demand).rename("Demand").copy() / 1e6
         demand_disp.iloc[i:] = np.nan
         demand_disp = pd.melt(demand_disp.reset_index(), id_vars=["index"])
-        blackouts_disp = blackouts_disp_all.loc[
-            blackouts_disp_all["time"] <= grid.time_steps[i]
-        ]
+        if not blackouts_disp_all.empty:
+            blackouts_disp = blackouts_disp_all.loc[
+                blackouts_disp_all["time"] <= grid.time_steps[i]
+            ]
 
         # chart layers
-        blackout_chart = (
-            alt.Chart(blackouts_disp)
-            .mark_text(size=18, baseline="middle")
-            .encode(alt.X("time"), alt.Y("demand"), alt.Text("icon"))
-        )
+        if not blackouts_disp_all.empty:
+            blackout_chart = (
+                alt.Chart(blackouts_disp)
+                .mark_text(size=18, baseline="middle")
+                .encode(
+                    alt.X("time"),
+                    alt.Y("demand"),
+                    alt.Text("icon"),
+                    tooltip=alt.value(None),
+                )
+            )
         dispatch_chart = (
             alt.Chart(dispatch_disp)
             .mark_area()
@@ -198,6 +205,7 @@ with st.empty():
                 ),
                 alt.Order(field="order"),
                 opacity={"value": 0.7},
+                tooltip=alt.value(None),
             )
         )
         demand_chart = (
@@ -208,16 +216,24 @@ with st.empty():
                 alt.Y("value", title="", stack=True),
                 alt.Color("variable", title="", type="nominal"),
                 opacity={"value": 0.7},
+                tooltip=alt.value(None),
             )
         )
 
         # layered chart
-        st.altair_chart(
-            alt.layer(
+        if not blackouts_disp_all.empty:
+            layer_chart = alt.layer(
                 dispatch_chart,
                 demand_chart,
                 blackout_chart,
-            ),
+            )
+        else:
+            layer_chart = alt.layer(
+                dispatch_chart,
+                demand_chart,
+            )
+        st.altair_chart(
+            layer_chart,
             use_container_width=True,
         )
 
@@ -259,6 +275,7 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                 alt.Color("index", title="", type="nominal", sort=cost_order),
                 alt.Order(field="order"),
                 opacity={"value": 0.7},
+                tooltip=alt.value(None),
             )
         )
 
@@ -270,6 +287,7 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                 alt.X("index", title=""),
                 alt.Y("total_cost", title=""),
                 alt.Text("percent", format=".1f"),
+                tooltip=alt.value(None),
             )
         )
 

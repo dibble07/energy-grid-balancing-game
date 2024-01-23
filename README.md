@@ -1,6 +1,8 @@
 # Energy Grid Balancing Game
 Game to balance energy generators in the electricity grid
 
+![](energy_grid_balancing_game/gameplay.gif)
+
 ## Purpose
 To create an engaging way to educate people about the challenges of balancing the energy grid at out reach programmes and events.
 
@@ -18,14 +20,12 @@ The user is able to select energy generators from a range of sources (both renew
     - `streamlit run energy_grid_balancing_game/streamlit_app.py`
 
 ## To do
-- Add/update screencast gif to README
-- Move to do list to issues on repo
 - Deploy to streamlit and refactor path references
-- Share on Slack
 - More context on user values: "equivalant to 14000 wind turbines"
 - Calculate optimum score
     - Cache value in streamlit
     - With and without storage
+    - Optimum over entire year
 - More graphs
     - Distribution of dispatched/spare/installed energy
     - Distribution of dispatched energy per source
@@ -35,3 +35,5 @@ The user is able to select energy generators from a range of sources (both renew
     - Hydro, hyrogen or battery
     - Green energy only?
     - Display surplus energy
+- Update screencast gif to README
+- Share on Slack
