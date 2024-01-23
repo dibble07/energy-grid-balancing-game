@@ -157,8 +157,8 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                 f"""
                 Cost: :{string_colour}[{cost/energy:,.2f}] EUR/MWh
                 - Financial: :{string_colour}[{financial_cost/energy:,.2f}] EUR/MWh
-                - Emissions: :{string_colour}[{social_carbon_cost/energy:,.2f}] EUR/MWh
-                - Social: :{string_colour}[{co2/energy:,.2f}] kgCO2e/MWh
+                - Emissions: :{string_colour}[{co2/energy:,.2f}] kgCO2e/MWh
+                - Social: :{string_colour}[{social_carbon_cost/energy:,.2f}] EUR/MWh
                 """
             )
         with col2:
@@ -328,8 +328,8 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
             alt.Chart(costs_disp)
             .mark_bar()
             .encode(
-                alt.X("variable", title="", axis=alt.Axis(labelAngle=0)),
-                alt.Y("value", title="Cost [EUR/MWh]", stack=True),
+                alt.Y("variable", title="", axis=alt.Axis(labelAngle=0)),
+                alt.X("value", title="Cost [EUR/MWh]", stack=True),
                 alt.Color("index", title="", type="nominal", sort=cost_order),
                 alt.Order(field="order"),
                 opacity={"value": 0.7},
@@ -337,23 +337,5 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
             )
         )
 
-        # annotation chart
-        annotate_chart = (
-            alt.Chart(costs_text)
-            .mark_text(baseline="bottom", color="white")
-            .encode(
-                alt.X("index", title=""),
-                alt.Y("total_cost", title=""),
-                alt.Text("percent", format=".1f"),
-                tooltip=alt.value(None),
-            )
-        )
-
         # layered chart
-        st.altair_chart(
-            alt.layer(
-                costs_chart,
-                annotate_chart,
-            ),
-            use_container_width=True,
-        )
+        st.altair_chart(costs_chart, use_container_width=True)
