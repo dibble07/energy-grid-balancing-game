@@ -22,20 +22,12 @@ The user is able to select energy generators from a range of sources (both renew
     - `streamlit run app.py`
 
 ## To do
-- Calculate optimum score
-    - Compare solvers for speed/results
-    - Reduce tolerance
-    - Cache value in streamlit
-    - Optimum over entire year
+- Add battery storage entity
+    - Display surplus energy
 - More graphs
     - Distribution of dispatched/spare/installed energy
     - Distribution of dispatched energy per source
     - Tab separated graphs
     - Shrink and/or make horizontal
-    - Contextual values as pictogram
-- Add storage entity
-    - Hydro, hyrogen or battery
-    - Green energy only?
-    - Display surplus energy
 - Update screencast gif to README
 - Share on Slack

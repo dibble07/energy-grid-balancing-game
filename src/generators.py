@@ -63,8 +63,9 @@ class BaseGenerator:
     def installed_capacity(self, value):
         "Set installed capacity and calculate min and max power profiles"
         self._installed_capacity = value
-        self.calculate_max_power_profile()
-        self.calculate_min_power_profile()
+        if self.installed_capacity is not None:
+            self.calculate_max_power_profile()
+            self.calculate_min_power_profile()
 
     def calculate_max_power_profile(self):
         "Calculate maximum power profile"

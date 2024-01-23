@@ -69,13 +69,13 @@ Your score is determined by the cost per unit of energy produced. The cost compr
     with st.expander("Generation sources", expanded=True):
         coal = st.number_input("Coal (MW)", min_value=0, value=0)
         if coal > 0:
-            st.markdown(f"{coal/500:,.1f} Coal Power Stations")
+            st.markdown(f"{coal/500:,.0f} Coal Power Stations")
         gas = st.number_input("Gas (MW)", min_value=0, value=0)
         if gas > 0:
-            st.markdown(f"{gas/470:,.1f} Gas Power Stations")
+            st.markdown(f"{gas/470:,.0f} Gas Power Stations")
         nuclear = st.number_input("Nuclear (MW)", min_value=0, value=0)
         if nuclear > 0:
-            st.markdown(f"{nuclear/990:,.1f} Nuclear Power Stations")
+            st.markdown(f"{nuclear/990:,.0f} Nuclear Power Stations")
         solar = st.number_input("Solar (MW)", min_value=0, value=0)
         if solar > 0:
             st.markdown(f"{solar/(1/1000)/7300:,.0f} Football pitches")
@@ -102,6 +102,10 @@ grid = EnergyMixer(
     week=week_no,
 )
 max_demand = max(grid.demand.values())
+
+# initialise optimum score
+if "grid_optimum" not in st.session_state:
+    st.session_state["grid_optimum"] = grid.optimum
 
 # run simulation
 grid.set_installed_capacity(
@@ -136,15 +140,16 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
     financial_cost = totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
     social_carbon_cost = totals.loc["social_carbon_cost"].sum()
     co2 = totals.loc["co2"].sum()
-    string_colour = "red" if blackouts or oversupply > 0 else "green"
+    string_colour = "red" if blackouts or not np.isclose(oversupply, 0) else "green"
     with st.container():
-        col1, col2 = st.columns(2)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.markdown(
                 f"""
                 Cost: :{string_colour}[{cost/energy:,.2f}] EUR/MWh
                 - Financial: :{string_colour}[{financial_cost/energy:,.2f}] EUR/MWh
-                - Emissions: :{string_colour}[{social_carbon_cost/energy:,.2f}] EUR/MWh (:{string_colour}[{co2/energy:,.2f}] kgCO2e/MWh)
+                - Emissions: :{string_colour}[{social_carbon_cost/energy:,.2f}] EUR/MWh
+                - Social: :{string_colour}[{co2/energy:,.2f}] kgCO2e/MWh
                 """
             )
         with col2:
@@ -155,7 +160,29 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                 )
             else:
                 st.write(f"Blackout duration: :{string_colour}[00:00:00] /day")
+        with col3:
             st.write(f"Oversupply: :{string_colour}[{oversupply:,.0f}] MWh")
+        with col4:
+            diff = cost / energy - st.session_state["grid_optimum"]["score"]
+            perc = 100 * diff / st.session_state["grid_optimum"]["score"]
+            if perc > 25:
+                opt_string_colour = "red"
+            elif perc > 10:
+                opt_string_colour = "orange"
+            else:
+                opt_string_colour = "green"
+            st.markdown(
+                f"""
+                Optimum cost: :{opt_string_colour}[{st.session_state["grid_optimum"]["score"]:,.2f}] EUR/MWh
+                - Difference: :{opt_string_colour}[{diff:,.2f}] EUR/MWh
+                - Percentage: :{opt_string_colour}[{perc:,.2f}] %
+                """
+            )
+            with st.expander("Generators", expanded=False):
+                for k, v in st.session_state["grid_optimum"][
+                    "installed_capacity"
+                ].items():
+                    st.write(f"{k.title()}: {v/1e6:,.0f} MW")
 
 # display dispatch and demand
 icon_gap = np.timedelta64(12, "h")
