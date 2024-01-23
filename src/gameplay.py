@@ -2,8 +2,8 @@ import inspect
 
 import pandas as pd
 
-from generators import DataGenerator
-from utils import get_demand_curve
+from src.generators import DataGenerator
+from src.utils import get_demand_curve
 
 
 class EnergyMixer:

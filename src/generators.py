@@ -1,7 +1,20 @@
 import numpy as np
 import pandas as pd
 
-import utils
+import src.utils as utils
+
+# sources for default values
+# capex and opex https://atb.nrel.gov/electricity/2022/index
+# emissions - https://www.sciencedirect.com/science/article/pii/S0306261921012149#f0045
+# eu carbon pricing 86 EUR/TCO2e Jan 02 '23 https://www.statista.com/statistics/1322214/carbon-prices-european-union-emission-trading-scheme/
+# social carbon cost - https://www.rff.org/news/press-releases/social-cost-of-carbon-more-than-triple-the-current-federal-estimate-new-study-finds/
+
+# constants for cost calculations
+USD_KWY = 0.92 / (1e3 * 365.25 * 24 * 3600)
+USD_KW = 0.92 / (1e3)
+GRAM_MWH = 0.001 / (1e6 * 3600)
+CARBON_TAX = 86 / 1000
+SOCIAL_CARBON_COST = 0.92 * 185 / 1000
 
 
 class BaseGenerator:
@@ -102,8 +115,8 @@ class BaseGenerator:
         co2 = dispatch_energy * self.co2_oper
         capex = self.installed_capacity * self.cost_inst
         opex = dispatch_energy * self.cost_oper
-        carbon_tax = co2 * utils.CARBON_TAX if self.carbon_tax else 0
-        social_carbon_cost = co2 * utils.SOCIAL_CARBON_COST
+        carbon_tax = co2 * CARBON_TAX if self.carbon_tax else 0
+        social_carbon_cost = co2 * SOCIAL_CARBON_COST
 
         return (
             dispatch_power,
@@ -167,9 +180,9 @@ class SolarGenerator(DataGenerator):
         time_steps,
         week,
         installed_capacity=None,
-        co2_oper=41000 * utils.GRAM_MWH,
-        cost_oper=19 * utils.USD_KWY,
-        cost_inst=1784 * utils.USD_KW / 30 / 52,
+        co2_oper=41000 * GRAM_MWH,
+        cost_oper=19 * USD_KWY,
+        cost_inst=1784 * USD_KW / 30 / 52,
         carbon_tax=False,
         min_output=0,
         col="solar",
@@ -193,9 +206,9 @@ class WindGenerator(DataGenerator):
         time_steps,
         week,
         installed_capacity=None,
-        co2_oper=11000 * utils.GRAM_MWH,
-        cost_oper=(116 + 75) / 2 * utils.USD_KWY,
-        cost_inst=(5908 + 3285) / 2 * utils.USD_KW / 25 / 52,
+        co2_oper=11000 * GRAM_MWH,
+        cost_oper=(116 + 75) / 2 * USD_KWY,
+        cost_inst=(5908 + 3285) / 2 * USD_KW / 25 / 52,
         carbon_tax=False,
         min_output=0,
         col="wind",
@@ -218,9 +231,9 @@ class NuclearGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity=None,
-        co2_oper=24000 * utils.GRAM_MWH,
-        cost_oper=(146 + 114) / 2 * utils.USD_KWY,
-        cost_inst=(7989 + 7442) / 2 * utils.USD_KW / 50 / 52,
+        co2_oper=24000 * GRAM_MWH,
+        cost_oper=(146 + 114) / 2 * USD_KWY,
+        cost_inst=(7989 + 7442) / 2 * USD_KW / 50 / 52,
         carbon_tax=False,
         min_output=1.0,
     ):
@@ -243,9 +256,9 @@ class CoalGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity=None,
-        co2_oper=980_000 * utils.GRAM_MWH,
-        cost_oper=(141 + 74) / 2 * utils.USD_KWY,
-        cost_inst=(5327 + 3075) / 2 * utils.USD_KW / 40 / 52,
+        co2_oper=980_000 * GRAM_MWH,
+        cost_oper=(141 + 74) / 2 * USD_KWY,
+        cost_inst=(5327 + 3075) / 2 * USD_KW / 40 / 52,
         carbon_tax=True,
         min_output=0.32,
     ):
@@ -268,9 +281,9 @@ class GasGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity=None,
-        co2_oper=430_000 * utils.GRAM_MWH,
-        cost_oper=(59 + 21) / 2 * utils.USD_KWY,
-        cost_inst=(2324 + 922) / 2 * utils.USD_KW / 30 / 52,
+        co2_oper=430_000 * GRAM_MWH,
+        cost_oper=(59 + 21) / 2 * USD_KWY,
+        cost_inst=(2324 + 922) / 2 * USD_KW / 30 / 52,
         carbon_tax=True,
         min_output=0.35,
     ):

@@ -1,16 +1,7 @@
+import base64
 import os
 
 import pandas as pd
-
-# constants for cost calculations
-# capex and opex https://atb.nrel.gov/electricity/2022/index
-# eu carbon pricing 86 EUR/TCO2e Jan 02 '23 https://www.statista.com/statistics/1322214/carbon-prices-european-union-emission-trading-scheme/
-# social carbon cost - https://www.rff.org/news/press-releases/social-cost-of-carbon-more-than-triple-the-current-federal-estimate-new-study-finds/
-USD_KWY = 0.92 / (1e3 * 365.25 * 24 * 3600)
-USD_KW = 0.92 / (1e3)
-GRAM_MWH = 0.001 / (1e6 * 3600)
-CARBON_TAX = 86 / 1000
-SOCIAL_CARBON_COST = 0.92 * 185 / 1000
 
 # load time series dataset
 # https://www.rte-france.com/en/eco2mix/power-generation-energy-source
@@ -37,6 +28,7 @@ WEEK_MAP = (
 )
 
 
+# get demand power profile
 def get_demand_curve(week):
     # extract timestamp of start of week
     week_start = WEEK_MAP.loc[WEEK_MAP["week"] == week, "datetime"].values[0]
