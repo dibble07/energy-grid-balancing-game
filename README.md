@@ -1,7 +1,9 @@
 # Energy Grid Balancing Game
 Game to balance energy generators in the electricity grid
 
-![](energy_grid_balancing_game/gameplay.gif)
+[Click here to play](https://energy-grid-balancing-game.streamlit.app/)
+
+![](src/gameplay.gif)
 
 ## Purpose
 To create an engaging way to educate people about the challenges of balancing the energy grid at out reach programmes and events.
