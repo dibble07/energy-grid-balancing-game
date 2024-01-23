@@ -12,7 +12,7 @@ from src.generators import (
     SolarGenerator,
     WindGenerator,
 )
-from src.utils import WEEK_MAP, total_energy
+from src.utils import WEEK_MAP, total_energy, get_windows_range
 
 # set config
 st.set_page_config(page_title="Energy Grid Game", layout="wide")
@@ -86,7 +86,6 @@ Your score is determined by the cost per unit of energy produced. The cost compr
         week_dt = st.selectbox(
             " ", week_map["date"].values, index=st.session_state["week_ind"]
         )
-
 st.session_state["week_ind"] = int(week_map.loc[week_map["date"] == week_dt].index[0])
 week_no = week_map.loc[st.session_state["week_ind"], "week"]
 
@@ -117,7 +116,15 @@ grid.set_installed_capacity(
         "nuclear": nuclear * 1e6,
     }
 )
-dispatch, _, _, oversupply, blackouts, totals = grid.calculate_dispatch()
+(
+    dispatch,
+    _,
+    shortfall,
+    oversupply,
+    shortfall_windows,
+    oversupply_windows,
+    totals,
+) = grid.calculate_dispatch()
 dispatch = pd.DataFrame(dispatch)
 totals = pd.DataFrame(totals)
 
@@ -140,9 +147,11 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
     financial_cost = totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
     social_carbon_cost = totals.loc["social_carbon_cost"].sum()
     co2 = totals.loc["co2"].sum()
-    string_colour = "red" if blackouts or not np.isclose(oversupply, 0) else "green"
+    string_colour = (
+        "red" if shortfall_windows or not np.isclose(oversupply, 0) else "green"
+    )
     with st.container():
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2 = st.columns(2)
         with col1:
             st.markdown(
                 f"""
@@ -153,16 +162,6 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                 """
             )
         with col2:
-            if blackouts:
-                blackout_duration = (np.diff(np.array(blackouts)).sum() / 7).components
-                st.write(
-                    f"Blackout duration: :{string_colour}[{(blackout_duration.hours+blackout_duration.days*24):02d}:{blackout_duration.minutes:02d}:{blackout_duration.seconds:02d}] /day"
-                )
-            else:
-                st.write(f"Blackout duration: :{string_colour}[00:00:00] /day")
-        with col3:
-            st.write(f"Oversupply: :{string_colour}[{oversupply:,.0f}] MWh")
-        with col4:
             diff = cost / energy - st.session_state["grid_optimum"]["score"]
             perc = 100 * diff / st.session_state["grid_optimum"]["score"]
             if perc > 25:
@@ -186,28 +185,38 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
 
 # display dispatch and demand
 icon_gap = np.timedelta64(12, "h")
-blackout_idx = []
-for blackout in blackouts:
-    blackout = np.array(blackout, dtype="datetime64")
-    midpoint_exact = (blackout[1] - blackout[0]) / 2 + blackout[0]
-    midpoint = grid.time_steps[
-        np.argmin(abs(np.array(grid.time_steps, dtype="datetime64") - midpoint_exact))
-    ]
-    n_icon = max(1, int(np.floor(np.diff(blackout) / icon_gap)[0]))
-    blackout_idx.extend(
-        np.arange(
-            midpoint - (n_icon - 1) / 2 * icon_gap,
-            midpoint + (n_icon - 1) / 2 * icon_gap + icon_gap,
-            icon_gap,
-        )
-    )
-blackouts_disp_all = pd.DataFrame(
-    data={
-        "time": blackout_idx,
-        "demand": [grid.demand[pd.Timestamp(i)] / 1e6 for i in blackout_idx],
-        "icon": ["⚠️"] * len(blackout_idx),
-    }
+shortfall_windows_idx = get_windows_range(shortfall_windows, grid.time_steps, icon_gap)
+oversupply_windows_idx = get_windows_range(
+    oversupply_windows, grid.time_steps, icon_gap
 )
+shortfall_windows_disp = (
+    pd.DataFrame(
+        data={
+            "time": shortfall_windows_idx,
+            "demand": [
+                grid.demand[pd.Timestamp(i)] / 1e6 for i in shortfall_windows_idx
+            ],
+            "icon": ["⚠️"] * len(shortfall_windows_idx),
+        }
+    )
+    if shortfall_windows
+    else pd.DataFrame()
+)
+oversupply_windows_disp = (
+    pd.DataFrame(
+        data={
+            "time": oversupply_windows_idx,
+            "demand": [
+                dispatch.sum(axis=1).loc[pd.Timestamp(i)] / 1e6
+                for i in oversupply_windows_idx
+            ],
+            "icon": ["⚡"] * len(oversupply_windows_idx),
+        }
+    )
+    if oversupply_windows
+    else pd.DataFrame()
+)
+windows_disp = pd.concat([shortfall_windows_disp, oversupply_windows_disp])
 with st.empty():
     for i in range(0, len(dispatch), 4):
         # data to plot
@@ -223,15 +232,15 @@ with st.empty():
         demand_disp = pd.Series(grid.demand).rename("Demand").copy() / 1e6
         demand_disp.iloc[i:] = np.nan
         demand_disp = pd.melt(demand_disp.reset_index(), id_vars=["index"])
-        if not blackouts_disp_all.empty:
-            blackouts_disp = blackouts_disp_all.loc[
-                blackouts_disp_all["time"] <= grid.time_steps[i]
+        if not windows_disp.empty:
+            shortfall_windows_disp = windows_disp.loc[
+                windows_disp["time"] <= grid.time_steps[i]
             ]
 
         # chart layers
-        if not blackouts_disp_all.empty:
-            blackout_chart = (
-                alt.Chart(blackouts_disp)
+        if not windows_disp.empty:
+            shortfall_windows_chart = (
+                alt.Chart(windows_disp)
                 .mark_text(size=18, baseline="middle")
                 .encode(
                     alt.X("time"),
@@ -270,11 +279,11 @@ with st.empty():
         )
 
         # layered chart
-        if not blackouts_disp_all.empty:
+        if not windows_disp.empty:
             layer_chart = alt.layer(
                 dispatch_chart,
                 demand_chart,
-                blackout_chart,
+                shortfall_windows_chart,
             )
         else:
             layer_chart = alt.layer(
