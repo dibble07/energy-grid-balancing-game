@@ -99,17 +99,8 @@ class BaseGenerator:
         }
 
         # total energy
-        dispatch_power_arr = np.array(list(dispatch_power.values()))
-        dispatch_power_arr = np.array(
-            [dispatch_power_arr[:-1], dispatch_power_arr[1:]]
-        ).mean(axis=0)
-        spare_power_arr = np.array(list(spare_power.values()))
-        spare_power_arr = np.array([spare_power_arr[:-1], spare_power_arr[1:]]).mean(
-            axis=0
-        )
-        time_diff = np.array([i.total_seconds() for i in np.diff(self.time_steps)])
-        dispatch_energy = (dispatch_power_arr * time_diff).sum()
-        spare_energy = (spare_power_arr * time_diff).sum()
+        dispatch_energy = utils.total_energy(dispatch_power.values(), self.time_steps)
+        spare_energy = utils.total_energy(spare_power.values(), self.time_steps)
 
         # emissions and costs
         co2 = dispatch_energy * self.co2_oper

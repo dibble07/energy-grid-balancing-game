@@ -1,6 +1,6 @@
-import base64
 import os
 
+import numpy as np
 import pandas as pd
 
 # load time series dataset
@@ -39,3 +39,17 @@ def get_demand_curve(week):
     ].to_dict()
 
     return demand
+
+
+def total_energy(power, time):
+    # calculate average power in each time interval
+    power_arr = np.array(list(power))
+    power_arr = np.array([power_arr[:-1], power_arr[1:]]).mean(axis=0)
+
+    # calculate time span of each interval
+    time_diff = np.array([i.total_seconds() for i in np.diff(time)])
+
+    # calculate total energy
+    energy = (power_arr * time_diff).sum()
+
+    return energy

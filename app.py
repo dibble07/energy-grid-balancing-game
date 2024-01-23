@@ -12,7 +12,7 @@ from src.generators import (
     SolarGenerator,
     WindGenerator,
 )
-from src.utils import WEEK_MAP
+from src.utils import WEEK_MAP, total_energy
 
 # set config
 st.set_page_config(page_title="Energy Grid Game", layout="wide")
@@ -54,17 +54,17 @@ Your score is determined by the cost per unit of energy produced. The cost compr
 - Consistent output 
 - Low carbon emissions
 ### Solar
-- Dispatchable but curtailment doesn’t save money
+- Dispatchable but curtailment doesn't save money
 - Consistent peak timings but limited output in mornings and evenings
 -Low carbon emissions
 ### Wind
-- Dispatchable but curtailment doesn’t save money
+- Dispatchable but curtailment doesn't save money
 - Erratic power profile
 - Low carbon emissions
 ## Assumptions
 - Generators can ramp up and down infinitely quickly
-- Coal, gas and nuclear generators can’t be turned off completely
-- There’s no penalty for producing more electricity than needed
+- Coal, gas and nuclear generators can't be turned off completely
+- There's no penalty for producing more electricity than needed
 """
         )
     with st.expander("Generation sources", expanded=True):
@@ -120,7 +120,18 @@ totals = pd.DataFrame(totals)
 
 # display score(s)
 if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
-    energy = totals.loc["dispatch_energy"].sum() / 1e6 / 3600
+    energy = (
+        total_energy(
+            pd.concat(
+                [pd.DataFrame(dispatch).sum(axis=1), pd.Series(grid.demand)], axis=1
+            )
+            .min(axis=1)
+            .values,
+            grid.time_steps,
+        )
+        / 1e6
+        / 3600
+    )
     cost = totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]].sum().sum()
     financial_cost = totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
     social_carbon_cost = totals.loc["social_carbon_cost"].sum()
