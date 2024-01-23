@@ -17,7 +17,7 @@ The user is able to select energy generators from a range of sources (both renew
     - `pip install -U pip`
     - `pip install poetry`
     - `poetry install`
-    - `streamlit run energy_grid_balancing_game/streamlit_app.py`
+    - `streamlit run app.py`
 
 ## To do
 - Deploy to streamlit and refactor path references

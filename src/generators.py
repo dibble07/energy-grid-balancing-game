@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-import utils
+import src.utils as utils
 
 # sources for default values
 # capex and opex https://atb.nrel.gov/electricity/2022/index

@@ -4,25 +4,25 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from gameplay import EnergyMixer
-from generators import (
+from src.gameplay import EnergyMixer
+from src.generators import (
     CoalGenerator,
     GasGenerator,
     NuclearGenerator,
     SolarGenerator,
     WindGenerator,
 )
-from utils import WEEK_MAP, get_blackout_icon
+from src.utils import WEEK_MAP
 
 # set config
 st.set_page_config(page_title="Energy Grid Game", layout="wide")
-# hide_streamlit_style = """
-#             <style>
-#             #MainMenu {visibility: hidden;}
-#             footer {visibility: hidden;}
-#             </style>
-#             """
-# st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # set header
 st.header("Energy Grid Game")

@@ -39,11 +39,3 @@ def get_demand_curve(week):
     ].to_dict()
 
     return demand
-
-
-# get blackout icon
-def get_blackout_icon():
-    image_path = "/Users/RDIB/Documents/GitHub/energy-grid-balancing-game/energy_grid_balancing_game/electricity.png"
-    with open(image_path, "rb") as f:
-        encoded_image = base64.b64encode(f.read()).decode()
-    return encoded_image
