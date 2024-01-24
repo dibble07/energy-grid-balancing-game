@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from src.gameplay import EnergyMixer
+from src.grid import EnergyMixer
 from src.generators import (
     CoalGenerator,
     GasGenerator,
@@ -118,26 +118,13 @@ grid.set_installed_capacity(
         "nuclear": nuclear * 1e6,
     }
 )
-(
-    dispatch,
-    spare,
-    shortfall,
-    oversupply,
-    shortfall_windows,
-    oversupply_windows,
-    totals,
-) = grid.calculate_dispatch()
-dispatch = pd.DataFrame(dispatch)
-spare = pd.DataFrame(spare)
-totals = pd.DataFrame(totals)
+grid.calculate_dispatch()
 
 # display score(s)
 if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
     energy = (
         total_energy(
-            pd.concat(
-                [pd.DataFrame(dispatch).sum(axis=1), pd.Series(grid.demand)], axis=1
-            )
+            pd.concat([grid.dispatch.sum(axis=1), pd.Series(grid.demand)], axis=1)
             .min(axis=1)
             .values,
             grid.time_steps,
@@ -145,13 +132,17 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
         / 1e6
         / 3600
     )
-    oversupply = total_energy(oversupply.values(), grid.time_steps) / 1e6 / 3600
-    cost = totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]].sum().sum()
-    financial_cost = totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
-    social_carbon_cost = totals.loc["social_carbon_cost"].sum()
-    co2 = totals.loc["co2"].sum()
+    oversupply = total_energy(grid.oversupply.values, grid.time_steps) / 1e6 / 3600
+    cost = (
+        grid.totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
+        .sum()
+        .sum()
+    )
+    financial_cost = grid.totals.loc[["capex", "opex", "carbon_tax"]].sum().sum()
+    social_carbon_cost = grid.totals.loc["social_carbon_cost"].sum()
+    co2 = grid.totals.loc["co2"].sum()
     string_colour = (
-        "red" if shortfall_windows or not np.isclose(oversupply, 0) else "green"
+        "red" if grid.shortfall_windows or grid.oversupply_windows else "green"
     )
     with st.container():
         col1, col2 = st.columns(2)
@@ -170,7 +161,7 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                     cost / energy - st.session_state["grid_optimum"][week_no]["score"]
                 )
                 perc = 100 * diff / st.session_state["grid_optimum"][week_no]["score"]
-                if perc > 25 or shortfall_windows or not np.isclose(oversupply, 0):
+                if perc > 25 or grid.shortfall_windows or grid.oversupply_windows:
                     opt_string_colour = "red"
                 elif perc > 10:
                     opt_string_colour = "orange"
@@ -191,9 +182,11 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
 
 # display dispatch and demand
 icon_gap = np.timedelta64(12, "h")
-shortfall_windows_idx = get_windows_range(shortfall_windows, grid.time_steps, icon_gap)
+shortfall_windows_idx = get_windows_range(
+    grid.shortfall_windows, grid.time_steps, icon_gap
+)
 oversupply_windows_idx = get_windows_range(
-    oversupply_windows, grid.time_steps, icon_gap
+    grid.oversupply_windows, grid.time_steps, icon_gap
 )
 shortfall_windows_disp = (
     pd.DataFrame(
@@ -205,7 +198,7 @@ shortfall_windows_disp = (
             "icon": ["⚠️"] * len(shortfall_windows_idx),
         }
     )
-    if shortfall_windows
+    if grid.shortfall_windows
     else pd.DataFrame()
 )
 oversupply_windows_disp = (
@@ -213,21 +206,21 @@ oversupply_windows_disp = (
         data={
             "time": oversupply_windows_idx,
             "demand": [
-                dispatch.sum(axis=1).loc[pd.Timestamp(i)] / 1e6
+                grid.dispatch.sum(axis=1).loc[pd.Timestamp(i)] / 1e6
                 for i in oversupply_windows_idx
             ],
             "icon": ["⚡"] * len(oversupply_windows_idx),
         }
     )
-    if oversupply_windows
+    if grid.oversupply_windows
     else pd.DataFrame()
 )
 windows_disp = pd.concat([shortfall_windows_disp, oversupply_windows_disp])
 disp_order = {"nuclear": 0, "solar": 1, "wind": 2, "gas": 3, "coal": 4}
 with st.empty():
-    for i in range(0, len(dispatch), 4):
+    for i in range(0, len(grid.dispatch), 4):
         # data to plot
-        dispatch_disp = dispatch.copy() / 1e6
+        dispatch_disp = grid.dispatch.copy() / 1e6
         dispatch_disp.iloc[i:] = np.nan
         dispatch_disp = pd.melt(dispatch_disp.reset_index(), id_vars=["index"])
         dispatch_disp["order"] = dispatch_disp["variable"].map(disp_order)
@@ -307,13 +300,13 @@ with tab1:
         with st.empty():
             # data to plot
             costs_disp = (
-                totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
-                / (totals.loc["dispatch_energy"] / 1e6 / 3600)
+                grid.totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
+                / (grid.totals.loc["dispatch_energy"] / 1e6 / 3600)
             ).fillna(0)
             costs_text = costs_disp.sum().to_frame("total_cost")
             costs_text["percent"] = (
-                totals.loc["dispatch_energy"]
-                / totals.loc["dispatch_energy"].sum()
+                grid.totals.loc["dispatch_energy"]
+                / grid.totals.loc["dispatch_energy"].sum()
                 * 100
             )
             costs_text.reset_index(inplace=True)
@@ -349,10 +342,10 @@ with tab1:
             # layered chart
             st.altair_chart(costs_chart, use_container_width=True)
 with tab2:
-    if spare.max().max() > 0:
+    if grid.spare.max().max() > 0:
         with st.empty():
             # data to plot
-            spare_disp = spare.copy() / 1e6
+            spare_disp = grid.spare.copy() / 1e6
             spare_disp = pd.melt(spare_disp.reset_index(), id_vars=["index"])
             spare_disp["order"] = spare_disp["variable"].map(
                 {"solar": 1, "wind": 2, "nuclear": 0, "gas": 3, "coal": 4}

@@ -36,6 +36,7 @@ class EnergyMixer:
             Parameters:
                 installed_capacity (dict): generator name and installed capacity,
         """
+        self.reset_dispatch()
         for k, v in installed_capacity.items():
             self.generators[k].installed_capacity = v
 
@@ -62,11 +63,12 @@ class EnergyMixer:
                 self.set_installed_capacity(
                     {k: v * scale for k, v in zip(self.generators.keys(), x)}
                 )
-                return self.calculate_dispatch()
+                self.calculate_dispatch()
+                return self.dispatch, self.shortfall, self.oversupply, self.totals
 
             # define objectives
             def obj(x):
-                dispatch, _, _, _, _, _, totals = dispatch_calculation(tuple(x))
+                dispatch, _, _, totals = dispatch_calculation(tuple(x))
                 cost = (
                     pd.DataFrame(totals)
                     .loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
@@ -93,12 +95,12 @@ class EnergyMixer:
 
             # define contraints
             def cons_shortfall(x):
-                _, _, shortfall, _, _, _, _ = dispatch_calculation(tuple(x))
-                return -1 * mean(shortfall.values()) / 1e6 / 3600 / 7
+                _, shortfall, _, _ = dispatch_calculation(tuple(x))
+                return -1 * shortfall.mean() / 1e6 / 3600 / 7
 
             def cons_oversupply(x):
-                _, _, _, oversupply, _, _, _ = dispatch_calculation(tuple(x))
-                return -1 * mean(oversupply.values()) / 1e6 / 3600 / 7
+                _, _, oversupply, _ = dispatch_calculation(tuple(x))
+                return -1 * oversupply.mean() / 1e6 / 3600 / 7
 
             # initial estimate
             init_values = {
@@ -154,6 +156,7 @@ class EnergyMixer:
     def calculate_dispatch(self):
         "calculate dispatch and spare capacity of each generator"
         # initially dispatch levels at minimum for each generator
+        self.reset_dispatch()
         dispatch = self.min_power_profiles.copy()
         spare = {}
         totals = {}
@@ -170,25 +173,33 @@ class EnergyMixer:
             dispatch[name], spare[name], totals[name] = gen.calculate_dispatch(request)
 
         # calculate shortfall and oversupply
-        shortfall = (
-            (pd.Series(self.demand) - pd.DataFrame(dispatch).sum(axis=1))
-            .clip(lower=0)
-            .to_dict()
+        shortfall = (pd.Series(self.demand) - pd.DataFrame(dispatch).sum(axis=1)).clip(
+            lower=0
         )
-        oversupply = (
-            (pd.DataFrame(dispatch).sum(axis=1) - pd.Series(self.demand))
-            .clip(lower=0)
-            .to_dict()
+        oversupply = (pd.DataFrame(dispatch).sum(axis=1) - pd.Series(self.demand)).clip(
+            lower=0
         )
-        shortfall_windows = get_windows(shortfall, self.time_steps)
-        oversupply_windows = get_windows(oversupply, self.time_steps)
+        shortfall_windows = get_windows(shortfall.to_dict(), self.time_steps)
+        oversupply_windows = get_windows(oversupply.to_dict(), self.time_steps)
 
-        return (
-            dispatch,
-            spare,
-            shortfall,
-            oversupply,
-            shortfall_windows,
-            oversupply_windows,
-            totals,
-        )
+        # store results
+        self.dispatch = pd.DataFrame(dispatch)
+        self.spare = pd.DataFrame(spare)
+        self.shortfall = shortfall
+        self.oversupply = oversupply
+        self.shortfall_windows = shortfall_windows
+        self.oversupply_windows = oversupply_windows
+        self.totals = pd.DataFrame(totals)
+
+    def reset_dispatch(self):
+        for attr in [
+            "dispatch",
+            "spare",
+            "shortfall",
+            "oversupply",
+            "shortfall_windows",
+            "oversupply_windows",
+            "totals",
+        ]:
+            if hasattr(self, attr):
+                delattr(self, attr)
