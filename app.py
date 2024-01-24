@@ -69,13 +69,13 @@ Your score is determined by the cost per unit of energy produced. The cost compr
     with st.expander("Generation sources", expanded=True):
         coal = st.number_input("Coal (MW)", min_value=0, value=0)
         if coal > 0:
-            st.markdown(f"{coal/500:,.0f} Coal Power Stations")
+            st.markdown(f"{coal/1650:,.0f} Coal Power Stations")
         gas = st.number_input("Gas (MW)", min_value=0, value=0)
         if gas > 0:
-            st.markdown(f"{gas/470:,.0f} Gas Power Stations")
+            st.markdown(f"{gas/650:,.0f} Gas Power Stations")
         nuclear = st.number_input("Nuclear (MW)", min_value=0, value=0)
         if nuclear > 0:
-            st.markdown(f"{nuclear/990:,.0f} Nuclear Power Stations")
+            st.markdown(f"{nuclear/1150:,.0f} Nuclear Power Stations")
         solar = st.number_input("Solar (MW)", min_value=0, value=0)
         if solar > 0:
             st.markdown(f"{solar/(1/1000)/7300:,.0f} Football pitches")
@@ -220,15 +220,14 @@ oversupply_windows_disp = (
     else pd.DataFrame()
 )
 windows_disp = pd.concat([shortfall_windows_disp, oversupply_windows_disp])
+disp_order = {"nuclear": 0, "solar": 1, "wind": 2, "gas": 3, "coal": 4}
 with st.empty():
     for i in range(0, len(dispatch), 4):
         # data to plot
         dispatch_disp = dispatch.copy() / 1e6
         dispatch_disp.iloc[i:] = np.nan
         dispatch_disp = pd.melt(dispatch_disp.reset_index(), id_vars=["index"])
-        dispatch_disp["order"] = dispatch_disp["variable"].map(
-            {"solar": 1, "wind": 2, "nuclear": 0, "gas": 3, "coal": 4}
-        )
+        dispatch_disp["order"] = dispatch_disp["variable"].map(disp_order)
         dispatch_disp["variable"] = dispatch_disp["variable"].map(
             lambda x: x.replace("_", " ").title()
         )
@@ -256,15 +255,10 @@ with st.empty():
             alt.Chart(dispatch_disp)
             .mark_area()
             .encode(
-                alt.X("index", title="", axis=alt.Axis(tickCount="day")),
+                alt.X("index", axis=alt.Axis(tickCount="day")),
                 alt.Y("value", title="Power [MW]", stack=True),
-                alt.Color(
-                    "variable",
-                    title="",
-                    type="nominal",
-                    sort=list(grid.generators.keys()),
-                ),
-                alt.Order(field="order"),
+                alt.Color("variable"),
+                alt.Order("order"),
                 opacity={"value": 0.7},
                 tooltip=alt.value(None),
             )
@@ -273,9 +267,9 @@ with st.empty():
             alt.Chart(demand_disp)
             .mark_line()
             .encode(
-                alt.X("index", title="", axis=alt.Axis(tickCount="day")),
-                alt.Y("value", title="", stack=True),
-                alt.Color("variable", title="", type="nominal"),
+                alt.X("index"),
+                alt.Y("value"),
+                alt.Color("variable"),
                 opacity={"value": 0.7},
                 tooltip=alt.value(None),
             )
@@ -294,7 +288,12 @@ with st.empty():
                 demand_chart,
             )
         st.altair_chart(
-            layer_chart,
+            layer_chart.encode(
+                color=alt.Color(
+                    sort=[x.replace("_", " ").title() for x in disp_order.keys()]
+                    + ["Demand"]
+                )
+            ),
             use_container_width=True,
         )
 
@@ -335,10 +334,10 @@ with tab1:
                 alt.Chart(costs_disp)
                 .mark_bar()
                 .encode(
-                    alt.Y("variable", title="", axis=alt.Axis(labelAngle=0)),
+                    alt.Y("variable", axis=alt.Axis(labelAngle=0)),
                     alt.X("value", title="Cost [EUR/MWh]", stack=True),
-                    alt.Color("index", title="", type="nominal", sort=cost_order),
-                    alt.Order(field="order"),
+                    alt.Color("index"),
+                    alt.Order("order"),
                     opacity={"value": 0.7},
                     tooltip=alt.value(None),
                 )
@@ -364,15 +363,13 @@ with tab2:
                 alt.Chart(spare_disp)
                 .mark_area()
                 .encode(
-                    alt.X("index", title="", axis=alt.Axis(tickCount="day")),
+                    alt.X("index", axis=alt.Axis(tickCount="day")),
                     alt.Y("value", title="Power [MW]"),
                     alt.Color(
                         "variable",
-                        title="",
-                        type="nominal",
-                        sort=list(grid.generators.keys()),
+                        sort=[x.replace("_", " ").title() for x in disp_order.keys()],
                     ),
-                    alt.Order(field="order"),
+                    alt.Order("order"),
                     opacity={"value": 0.7},
                     tooltip=alt.value(None),
                 )
