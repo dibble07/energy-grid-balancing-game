@@ -108,20 +108,33 @@ class EnergyMixer:
                 "gas": 0.46,
                 "coal": 0.00,
             }
-            x0 = [init_values[x] for x in self.generators.keys()]
+            init_values_backup = {
+                "solar": 1,
+                "wind": 1,
+                "nuclear": 0,
+                "gas": 1,
+                "coal": 0.00,
+            }
 
-            # minimise
-            res = minimize(
-                fun=obj,
-                x0=x0,
-                bounds=[(0, None)] * len(self.generators),
-                constraints=[
-                    {"type": "ineq", "fun": cons_shortfall},
-                    {"type": "ineq", "fun": cons_oversupply},
-                ],
-                method="SLSQP",
-                options={"ftol": 10**-4},
-            )
+            # define minimisation function
+            def optimise(init):
+                res = minimize(
+                    fun=obj,
+                    x0=[init[x] for x in self.generators.keys()],
+                    bounds=[(0, None)] * len(self.generators),
+                    constraints=[
+                        {"type": "ineq", "fun": cons_shortfall},
+                        {"type": "ineq", "fun": cons_oversupply},
+                    ],
+                    method="SLSQP",
+                    options={"ftol": 10**-4},
+                )
+                return res
+
+            # perform minimisation
+            res = optimise(init_values)
+            if not res.success:
+                res = optimise(init_values_backup)
             if res.success:
                 self._optimum = {
                     "installed_capacity": {
