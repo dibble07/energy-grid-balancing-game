@@ -20,9 +20,3 @@ The user is able to select energy generators from a range of sources (both renew
     - `pip install poetry`
     - `poetry install`
     - `streamlit run app.py`
-
-## To do
-- Add battery storage entity
-    - Display surplus energy
-- Update screencast gif to README
-- Share on Slack
