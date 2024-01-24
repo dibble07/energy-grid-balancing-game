@@ -101,14 +101,17 @@ class EnergyMixer:
             # minimise
             res = minimize(
                 fun=obj,
-                x0=[1 / len(self.generators)] * len(self.generators),
+                x0=[
+                    0,
+                ]
+                + [1 / (len(self.generators) - 1)] * (len(self.generators) - 1),
                 bounds=[(0, None)] * len(self.generators),
                 constraints=[
                     {"type": "ineq", "fun": cons_shortfall},
                     {"type": "ineq", "fun": cons_oversupply},
                 ],
                 method="SLSQP",
-                options={"ftol": 10**-3},
+                options={"ftol": 10**-4},
             )
             if res.success:
                 self._optimum = {
