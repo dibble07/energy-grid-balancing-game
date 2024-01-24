@@ -165,26 +165,29 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                 """
             )
         with col2:
-            diff = cost / energy - st.session_state["grid_optimum"][week_no]["score"]
-            perc = 100 * diff / st.session_state["grid_optimum"][week_no]["score"]
-            if perc > 25:
-                opt_string_colour = "red"
-            elif perc > 10:
-                opt_string_colour = "orange"
-            else:
-                opt_string_colour = "green"
-            st.markdown(
-                f"""
-                Optimum cost: :{opt_string_colour}[{st.session_state["grid_optimum"][week_no]["score"]:,.2f}] EUR/MWh
-                - Difference: :{opt_string_colour}[{diff:,.2f}] EUR/MWh
-                - Percentage: :{opt_string_colour}[{perc:,.2f}] %
-                """
-            )
-            with st.expander("Generators", expanded=False):
-                for k, v in st.session_state["grid_optimum"][week_no][
-                    "installed_capacity"
-                ].items():
-                    st.write(f"{k.title()}: {v/1e6:,.0f} MW")
+            if st.session_state["grid_optimum"][week_no] is not None:
+                diff = (
+                    cost / energy - st.session_state["grid_optimum"][week_no]["score"]
+                )
+                perc = 100 * diff / st.session_state["grid_optimum"][week_no]["score"]
+                if perc > 25:
+                    opt_string_colour = "red"
+                elif perc > 10:
+                    opt_string_colour = "orange"
+                else:
+                    opt_string_colour = "green"
+                st.markdown(
+                    f"""
+                    Optimum cost: :{opt_string_colour}[{st.session_state["grid_optimum"][week_no]["score"]:,.2f}] EUR/MWh
+                    - Difference: :{opt_string_colour}[{diff:,.2f}] EUR/MWh
+                    - Percentage: :{opt_string_colour}[{perc:,.2f}] %
+                    """
+                )
+                with st.expander("Generators", expanded=False):
+                    for k, v in st.session_state["grid_optimum"][week_no][
+                        "installed_capacity"
+                    ].items():
+                        st.write(f"{k.title()}: {v/1e6:,.0f} MW")
 
 # display dispatch and demand
 icon_gap = np.timedelta64(12, "h")
