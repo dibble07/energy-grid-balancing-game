@@ -62,17 +62,18 @@ def get_windows(values, time_steps):
     windows = []
 
     # identify boundaries
+    atol = 1
     for i, (time_steps_pre, time_steps_post) in enumerate(
         zip(time_steps[:-1], time_steps[1:])
     ):
         values_pre = values[time_steps_pre]
         values_post = values[time_steps_post]
-        if (values_pre == 0 and not np.isclose(values_post, 0)) or (
-            i == 0 and not np.isclose(values_pre, 0)
+        if (values_pre == 0 and not np.isclose(values_post, 0, atol=atol)) or (
+            i == 0 and not np.isclose(values_pre, 0, atol=atol)
         ):
             windows_start.append(time_steps_pre)
-        if (not np.isclose(values_pre, 0) and values_post == 0) or (
-            i == len(time_steps) - 2 and not np.isclose(values_post, 0)
+        if (not np.isclose(values_pre, 0, atol=atol) and values_post == 0) or (
+            i == len(time_steps) - 2 and not np.isclose(values_post, 0, atol=atol)
         ):
             windows_end.append(time_steps_post)
     assert len(windows_start) == len(windows_end)
