@@ -1,4 +1,6 @@
 import inspect
+import warnings
+from functools import cache
 from statistics import mean
 
 import pandas as pd
@@ -54,12 +56,17 @@ class EnergyMixer:
             # set scaling factor
             scale = mean(self.demand.values())
 
-            # define objectives and constraints
-            def obj(x):
+            # define dispatch calculation
+            @cache
+            def dispatch_calculation(x):
                 self.set_installed_capacity(
                     {k: v * scale for k, v in zip(self.generators.keys(), x)}
                 )
-                dispatch, _, _, _, _, _, totals = self.calculate_dispatch()
+                return self.calculate_dispatch()
+
+            # define objectives
+            def obj(x):
+                dispatch, _, _, _, _, _, totals = dispatch_calculation(tuple(x))
                 cost = (
                     pd.DataFrame(totals)
                     .loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
@@ -84,27 +91,29 @@ class EnergyMixer:
                 )
                 return cost / useful_energy
 
+            # define contraints
             def cons_shortfall(x):
-                self.set_installed_capacity(
-                    {k: v * scale for k, v in zip(self.generators.keys(), x)}
-                )
-                _, _, shortfall, _, _, _, _ = self.calculate_dispatch()
+                _, _, shortfall, _, _, _, _ = dispatch_calculation(tuple(x))
                 return -1 * mean(shortfall.values()) / 1e6 / 3600 / 7
 
             def cons_oversupply(x):
-                self.set_installed_capacity(
-                    {k: v * scale for k, v in zip(self.generators.keys(), x)}
-                )
-                _, _, _, oversupply, _, _, _ = self.calculate_dispatch()
+                _, _, _, oversupply, _, _, _ = dispatch_calculation(tuple(x))
                 return -1 * mean(oversupply.values()) / 1e6 / 3600 / 7
+
+            # initial estimate
+            init_values = {
+                "solar": 0.32,
+                "wind": 1.01,
+                "nuclear": 0.52,
+                "gas": 0.46,
+                "coal": 0.00,
+            }
+            x0 = [init_values[x] for x in self.generators.keys()]
 
             # minimise
             res = minimize(
                 fun=obj,
-                x0=[
-                    0,
-                ]
-                + [1 / (len(self.generators) - 1)] * (len(self.generators) - 1),
+                x0=x0,
                 bounds=[(0, None)] * len(self.generators),
                 constraints=[
                     {"type": "ineq", "fun": cons_shortfall},
@@ -121,9 +130,8 @@ class EnergyMixer:
                     "score": res.fun,
                 }
             else:
-                raise ValueError(
-                    f"Optimiser failed - status:{res.status} message:{res.message}"
-                )
+                warnings.warn(f"Optimiser failed: {res}")
+                self._optimum = None
 
             # return to original installed capacity
             self.set_installed_capacity(original_installed_capacity)
