@@ -170,7 +170,7 @@ if sum([g.installed_capacity for g in grid.generators.values()]) > 0:
                     cost / energy - st.session_state["grid_optimum"][week_no]["score"]
                 )
                 perc = 100 * diff / st.session_state["grid_optimum"][week_no]["score"]
-                if perc > 25:
+                if perc > 25 or shortfall_windows or not np.isclose(oversupply, 0):
                     opt_string_colour = "red"
                 elif perc > 10:
                     opt_string_colour = "orange"
