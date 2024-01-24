@@ -67,10 +67,12 @@ def get_windows(values, time_steps):
     ):
         values_pre = values[time_steps_pre]
         values_post = values[time_steps_post]
-        if (values_pre == 0 and values_post > 0) or (i == 0 and values_pre > 0):
+        if (values_pre == 0 and not np.isclose(values_post, 0)) or (
+            i == 0 and not np.isclose(values_pre, 0)
+        ):
             windows_start.append(time_steps_pre)
-        if (values_pre > 0 and values_post == 0) or (
-            i == len(time_steps) - 2 and values_post > 0
+        if (not np.isclose(values_pre, 0) and values_post == 0) or (
+            i == len(time_steps) - 2 and not np.isclose(values_post, 0)
         ):
             windows_end.append(time_steps_post)
     assert len(windows_start) == len(windows_end)
