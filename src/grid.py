@@ -10,7 +10,7 @@ from src.generators import DataGenerator
 from src.utils import get_demand_curve, total_energy, get_windows
 
 
-class EnergyMixer:
+class Grid:
     def __init__(self, generators, week) -> None:
         """
         Initialise energy mixer
@@ -19,7 +19,7 @@ class EnergyMixer:
                 week(int): week of year in consideration,
         """
         # get demand curve
-        self.demand = get_demand_curve(week=week)
+        self.demand = pd.Series(get_demand_curve(week=week)).rename("demand")
         self.time_steps = list(self.demand.keys())
 
         # initialise generators
@@ -49,13 +49,14 @@ class EnergyMixer:
         # calculate optimum if not already stored
         if not hasattr(self, "_optimum"):
 
-            # save current install capacity
+            # save current state
             original_installed_capacity = {
                 k: g.installed_capacity for k, g in self.generators.items()
             }
+            dispatch_calculated = hasattr(self, "dispatch")
 
             # set scaling factor
-            scale = mean(self.demand.values())
+            scale = self.demand.mean()
 
             # define dispatch calculation
             @cache
@@ -70,28 +71,15 @@ class EnergyMixer:
             def obj(x):
                 dispatch, _, _, totals = dispatch_calculation(tuple(x))
                 cost = (
-                    pd.DataFrame(totals)
-                    .loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
+                    totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]]
                     .sum()
                     .sum()
                 )
-                useful_energy = (
-                    total_energy(
-                        pd.concat(
-                            [
-                                pd.DataFrame(dispatch).sum(axis=1),
-                                pd.Series(self.demand),
-                            ],
-                            axis=1,
-                        )
-                        .min(axis=1)
-                        .values,
-                        self.time_steps,
-                    )
-                    / 1e6
-                    / 3600
+                useful_energy = total_energy(
+                    pd.concat([dispatch.sum(axis=1), self.demand], axis=1).min(axis=1),
+                    self.time_steps,
                 )
-                return cost / useful_energy
+                return cost / (useful_energy / 1e6 / 3600)
 
             # define contraints
             def cons_shortfall(x):
@@ -148,8 +136,10 @@ class EnergyMixer:
                 warnings.warn(f"Optimiser failed: {res}")
                 self._optimum = None
 
-            # return to original installed capacity
+            # return to original state
             self.set_installed_capacity(original_installed_capacity)
+            if dispatch_calculated:
+                self.calculate_dispatch()
 
         return self._optimum
 
