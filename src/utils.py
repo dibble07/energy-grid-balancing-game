@@ -1,4 +1,6 @@
+import json
 import os
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -147,3 +149,30 @@ Your score is determined by the cost per unit of energy produced. The cost compr
 
 def titlify(x):
     return x.replace("_", " ").title()
+
+
+f_path = os.path.join(os.getcwd(), "weekly_optimum.json")
+if os.path.isfile(f_path):
+    with open(f_path, "r") as f:
+        OPT_INIT_WEEKLY = json.loads(f.read())
+        OPT_INIT_WEEKLY = {int(k): v for k, v in OPT_INIT_WEEKLY.items()}
+else:
+    OPT_INIT_WEEKLY = {}
+
+
+def get_optimum_init(week):
+    if week in OPT_INIT_WEEKLY:
+        out = OPT_INIT_WEEKLY[week]
+    else:
+        warnings.warn(f"No initial optimum available for week {week}")
+        if OPT_INIT_WEEKLY:
+            out = pd.DataFrame(OPT_INIT_WEEKLY).mean(axis=1).to_dict()
+        else:
+            out = {
+                "solar": 0.32,
+                "wind": 1.01,
+                "nuclear": 0.52,
+                "gas": 0.46,
+                "coal": 0.00,
+            }
+    return out

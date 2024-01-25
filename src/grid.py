@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.optimize import minimize
 
 from src.generators import DataGenerator
-from src.utils import get_demand_curve, total_energy, get_windows
+from src.utils import get_demand_curve, total_energy, get_windows, get_optimum_init
 
 
 class Grid:
@@ -19,12 +19,13 @@ class Grid:
                 week(int): week of year in consideration,
         """
         # get demand curve
-        self.demand = pd.Series(get_demand_curve(week=week)).rename("demand")
+        self.week = week
+        self.demand = pd.Series(get_demand_curve(week=self.week)).rename("demand")
         self.time_steps = list(self.demand.keys())
 
         # initialise generators
         self.generators = {
-            k: g(time_steps=self.time_steps, week=week)
+            k: g(time_steps=self.time_steps, week=self.week)
             if DataGenerator in inspect.getmro(g)
             else g(time_steps=self.time_steps)
             for k, g in generators.items()
@@ -90,20 +91,7 @@ class Grid:
                 return -1 * oversupply.mean() / 1e6 / 3600 / 7
 
             # initial estimate
-            init_values = {
-                "solar": 0.32,
-                "wind": 1.01,
-                "nuclear": 0.52,
-                "gas": 0.46,
-                "coal": 0.00,
-            }
-            init_values_backup = {
-                "solar": 1,
-                "wind": 1,
-                "nuclear": 0,
-                "gas": 1,
-                "coal": 0.00,
-            }
+            init_values = get_optimum_init(self.week)
 
             # define minimisation function
             def optimise(init):
@@ -122,7 +110,16 @@ class Grid:
             # perform minimisation
             res = optimise(init_values)
             if not res.success:
-                res = optimise(init_values_backup)
+                warnings.warn(f"Optimiser failed: trying conservative inititalisation")
+                res = optimise(
+                    {
+                        "solar": 1 * self.demand.max() / self.demand.mean(),
+                        "wind": 1 * self.demand.max() / self.demand.mean(),
+                        "nuclear": 0,
+                        "gas": 1 * self.demand.max() / self.demand.mean(),
+                        "coal": 0,
+                    }
+                )
             if res.success:
                 self._optimum = {
                     "installed_capacity": {
