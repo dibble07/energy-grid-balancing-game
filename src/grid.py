@@ -48,7 +48,6 @@ class Grid:
     def optimum(self) -> dict:
         # calculate optimum if not already stored
         if not hasattr(self, "_optimum"):
-
             # save current state
             original_installed_capacity = {
                 k: g.installed_capacity for k, g in self.generators.items()
@@ -117,7 +116,6 @@ class Grid:
                         {"type": "ineq", "fun": cons_oversupply},
                     ],
                     method="SLSQP",
-                    options={"ftol": 10**-4},
                 )
                 return res
 

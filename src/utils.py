@@ -94,7 +94,6 @@ def get_windows_range(windows, time_steps, icon_gap):
 
     # loop over all windows
     for window in windows:
-
         # identify window midpoint
         window = np.array(window, dtype="datetime64")
         midpoint_exact = (window[1] - window[0]) / 2 + window[0]
