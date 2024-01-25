@@ -94,7 +94,7 @@ class Grid:
             init_values = get_optimum_init(self.week)
 
             # define minimisation function
-            def optimise(init):
+            def optimise(init, method="SLSQP"):
                 res = minimize(
                     fun=obj,
                     x0=[init[x] for x in self.generators.keys()],
@@ -103,23 +103,29 @@ class Grid:
                         {"type": "ineq", "fun": cons_shortfall},
                         {"type": "ineq", "fun": cons_oversupply},
                     ],
-                    method="SLSQP",
+                    method=method,
                 )
                 return res
 
             # perform minimisation
             res = optimise(init_values)
             if not res.success:
-                warnings.warn(f"Optimiser failed: trying conservative inititalisation")
-                res = optimise(
-                    {
-                        "solar": 1 * self.demand.max() / self.demand.mean(),
-                        "wind": 1 * self.demand.max() / self.demand.mean(),
-                        "nuclear": 0,
-                        "gas": 1 * self.demand.max() / self.demand.mean(),
-                        "coal": 0,
-                    }
-                )
+                for method in ["SLSQP", "COBYLA", "trust-constr", "dogleg"]:
+                    warnings.warn(
+                        f"Optimiser failed: trying conservative inititalisation and {method}"
+                    )
+                    res = optimise(
+                        {
+                            "solar": 1 * self.demand.max() / self.demand.mean(),
+                            "wind": 1 * self.demand.max() / self.demand.mean(),
+                            "nuclear": 0,
+                            "gas": 1 * self.demand.max() / self.demand.mean(),
+                            "coal": 0,
+                        },
+                        method,
+                    )
+                    if res.success:
+                        break
             if res.success:
                 self._optimum = {
                     "installed_capacity": {
