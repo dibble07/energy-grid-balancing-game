@@ -3,11 +3,17 @@ import warnings
 from functools import cache
 from statistics import mean
 
+import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
 from src.generators import DataGenerator
-from src.utils import get_demand_curve, total_energy, get_windows, get_optimum_init
+from src.utils import (
+    get_demand_curve,
+    total_energy,
+    get_windows,
+    get_optimum_init_params,
+)
 
 
 class Grid:
@@ -64,7 +70,7 @@ class Grid:
                 self.set_installed_capacity(
                     {k: v * scale for k, v in zip(self.generators.keys(), x)}
                 )
-                self.calculate_dispatch()
+                self.calculate_dispatch(incl_windows=False)
                 return self.dispatch, self.shortfall, self.oversupply, self.totals
 
             # define objectives
@@ -79,7 +85,9 @@ class Grid:
                     pd.concat([dispatch.sum(axis=1), self.demand], axis=1).min(axis=1),
                     self.time_steps,
                 )
-                return cost / (useful_energy / 1e6 / 3600)
+                return (
+                    cost / (useful_energy / 1e6 / 3600) if useful_energy > 0 else np.inf
+                )
 
             # define contraints
             def cons_shortfall(x):
@@ -90,11 +98,8 @@ class Grid:
                 _, _, oversupply, _ = dispatch_calculation(tuple(x))
                 return -1 * oversupply.mean() / 1e6 / 3600 / 7
 
-            # initial estimate
-            init_values = get_optimum_init(self.week)
-
             # define minimisation function
-            def optimise(init, method="SLSQP"):
+            def optimise(init, method):
                 res = minimize(
                     fun=obj,
                     x0=[init[x] for x in self.generators.keys()],
@@ -108,24 +113,30 @@ class Grid:
                 return res
 
             # perform minimisation
-            res = optimise(init_values)
-            if not res.success:
-                for method in ["SLSQP", "COBYLA", "trust-constr", "dogleg"]:
-                    warnings.warn(
-                        f"Optimiser failed: trying conservative inititalisation and {method}"
-                    )
-                    res = optimise(
-                        {
-                            "solar": 1 * self.demand.max() / self.demand.mean(),
-                            "wind": 1 * self.demand.max() / self.demand.mean(),
-                            "nuclear": 0,
-                            "gas": 1 * self.demand.max() / self.demand.mean(),
-                            "coal": 0,
-                        },
-                        method,
-                    )
+            optimum_init_params = get_optimum_init_params(self.week)
+            init_value_options = [
+                optimum_init_params,
+                {
+                    "solar": 1 * self.demand.max() / self.demand.mean(),
+                    "wind": 1 * self.demand.max() / self.demand.mean(),
+                    "nuclear": 0,
+                    "gas": 1 * self.demand.max() / self.demand.mean(),
+                    "coal": 0,
+                },
+            ]
+            for init_value, init_value_name in zip(
+                init_value_options, ["optimal", "conservative"]
+            ):
+                for method in ["SLSQP", "COBYLA"]:
+                    res = optimise(init_value, method)
                     if res.success:
                         break
+                    else:
+                        warnings.warn(
+                            f"Optimiser failed with method: {method} and init values: {init_value_name}"
+                        )
+                if res.success:
+                    break
             if res.success:
                 self._optimum = {
                     "installed_capacity": {
@@ -144,7 +155,7 @@ class Grid:
 
         return self._optimum
 
-    def calculate_dispatch(self):
+    def calculate_dispatch(self, incl_windows=True):
         "calculate dispatch and spare capacity of each generator"
         # initially dispatch levels at minimum for each generator
         self.reset_dispatch()
@@ -162,25 +173,22 @@ class Grid:
             # request generator provides its minimum plus the shortfall
             request = (shortfall + pd.Series(gen.min_power)).to_dict()
             dispatch[name], spare[name], totals[name] = gen.calculate_dispatch(request)
-
-        # calculate shortfall and oversupply
-        shortfall = (pd.Series(self.demand) - pd.DataFrame(dispatch).sum(axis=1)).clip(
-            lower=0
-        )
-        oversupply = (pd.DataFrame(dispatch).sum(axis=1) - pd.Series(self.demand)).clip(
-            lower=0
-        )
-        shortfall_windows = get_windows(shortfall.to_dict(), self.time_steps)
-        oversupply_windows = get_windows(oversupply.to_dict(), self.time_steps)
-
-        # store results
         self.dispatch = pd.DataFrame(dispatch)
         self.spare = pd.DataFrame(spare)
+        self.totals = pd.DataFrame(totals)
+
+        # calculate shortfall and oversupply
+        shortfall = (self.demand - self.dispatch.sum(axis=1)).clip(lower=0)
+        oversupply = (self.dispatch.sum(axis=1) - self.demand).clip(lower=0)
         self.shortfall = shortfall
         self.oversupply = oversupply
-        self.shortfall_windows = shortfall_windows
-        self.oversupply_windows = oversupply_windows
-        self.totals = pd.DataFrame(totals)
+
+        # calculate shortfall and oversupply windows
+        if incl_windows:
+            shortfall_windows = get_windows(shortfall.to_dict(), self.time_steps)
+            oversupply_windows = get_windows(oversupply.to_dict(), self.time_steps)
+            self.shortfall_windows = shortfall_windows
+            self.oversupply_windows = oversupply_windows
 
     def reset_dispatch(self):
         for attr in [
