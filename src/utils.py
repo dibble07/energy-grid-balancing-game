@@ -151,12 +151,16 @@ def titlify(x):
     return x.replace("_", " ").title()
 
 
-f_path = os.path.join(os.getcwd(), "weekly_optimum.json")
+f_path = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    "weekly_optimum.json",
+)
 if os.path.isfile(f_path):
     with open(f_path, "r") as f:
         OPT_INIT_WEEKLY = json.loads(f.read())
         OPT_INIT_WEEKLY = {int(k): v for k, v in OPT_INIT_WEEKLY.items()}
 else:
+    warnings.warn(f"No initial optimum file available in {f_path}")
     OPT_INIT_WEEKLY = {}
 
 
