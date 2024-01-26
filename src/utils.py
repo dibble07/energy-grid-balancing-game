@@ -164,19 +164,16 @@ else:
     OPT_INIT_WEEKLY = {}
 
 
-def get_optimum_init(week):
+def get_optimum_init_params(week):
     if week in OPT_INIT_WEEKLY:
         out = OPT_INIT_WEEKLY[week]
     else:
         warnings.warn(f"No initial optimum available for week {week}")
-        if OPT_INIT_WEEKLY:
-            out = pd.DataFrame(OPT_INIT_WEEKLY).mean(axis=1).to_dict()
-        else:
-            out = {
-                "solar": 0.32,
-                "wind": 1.01,
-                "nuclear": 0.52,
-                "gas": 0.46,
-                "coal": 0.00,
-            }
+        out = {
+            "solar": 0.32,
+            "wind": 1.01,
+            "nuclear": 0.52,
+            "gas": 0.46,
+            "coal": 0.00,
+        }
     return out
