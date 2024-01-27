@@ -235,9 +235,6 @@ class NuclearGenerator(BaseGenerator):
             carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
-        """
-        Initialise technology specific values
-        """
 
 
 class CoalGenerator(BaseGenerator):
@@ -262,9 +259,6 @@ class CoalGenerator(BaseGenerator):
             carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
-        """
-        Initialise technology specific values
-        """
 
 
 class GasGenerator(BaseGenerator):
@@ -289,6 +283,27 @@ class GasGenerator(BaseGenerator):
             carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
-        """
-        Initialise technology specific values
-        """
+
+
+class BatteryGenerator(BaseGenerator):
+    def __init__(
+        self,
+        time_steps,
+        installed_capacity=None,
+        storage_duration=4 * 3600,
+        co2_oper=78000 * GRAM_MWH,
+        cost_oper=(24 + 88) / 2 * USD_KWY,
+        cost_inst=(943 + 3520) / 2 * USD_KW / 15 / 52,
+        carbon_tax=False,
+        min_output=-1,
+    ):
+        super().__init__(
+            installed_capacity=installed_capacity,
+            min_output=min_output,
+            storage_duration=storage_duration,
+            co2_oper=co2_oper,
+            cost_oper=cost_oper,
+            cost_inst=cost_inst,
+            carbon_tax=carbon_tax,
+            time_steps=time_steps,
+        )
