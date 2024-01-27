@@ -49,7 +49,7 @@ class Grid:
 
     @property
     def min_power_profiles(self) -> dict:
-        return {k: g.min_power for k, g in self.generators.items()}
+        return pd.DataFrame({k: g.min_power for k, g in self.generators.items()})
 
     @property
     def optimum(self) -> dict:
@@ -160,34 +160,33 @@ class Grid:
         "calculate dispatch and spare capacity of each generator"
         # initially dispatch levels at minimum for each generator
         self.reset_dispatch()
-        dispatch = self.min_power_profiles.copy()
+        dispatch = self.min_power_profiles
         spare = {}
         totals = {}
 
         # loop over generation sources in order of preference
         for name, gen in self.generators.items():
-            # calculate shortfall between current dispatch and demand
-            shortfall = (
-                pd.Series(self.demand) - pd.DataFrame(dispatch).sum(axis=1)
-            ).clip(lower=0)
+            # calculate difference between current dispatch and demand
+            diff = self.demand - pd.DataFrame(dispatch).sum(axis=1)
 
             # request generator provides its minimum plus the shortfall
-            request = (shortfall + pd.Series(gen.min_power)).to_dict()
+            request = (diff + pd.Series(gen.min_power)).to_dict()
             dispatch[name], spare[name], totals[name] = gen.calculate_dispatch(request)
+
+        # save as dataframes
         self.dispatch = pd.DataFrame(dispatch)
         self.spare = pd.DataFrame(spare)
         self.totals = pd.DataFrame(totals)
 
         # calculate shortfall and oversupply
-        shortfall = (self.demand - self.dispatch.sum(axis=1)).clip(lower=0)
-        oversupply = (self.dispatch.sum(axis=1) - self.demand).clip(lower=0)
-        self.shortfall = shortfall
-        self.oversupply = oversupply
+        diff = self.demand - self.dispatch.sum(axis=1)
+        self.shortfall = diff.clip(lower=0)
+        self.oversupply = (-1 * diff).clip(lower=0)
 
         # calculate shortfall and oversupply windows
         if incl_windows:
-            shortfall_windows = get_windows(shortfall.to_dict(), self.time_steps)
-            oversupply_windows = get_windows(oversupply.to_dict(), self.time_steps)
+            shortfall_windows = get_windows(self.shortfall.to_dict(), self.time_steps)
+            oversupply_windows = get_windows(self.oversupply.to_dict(), self.time_steps)
             self.shortfall_windows = shortfall_windows
             self.oversupply_windows = oversupply_windows
 
