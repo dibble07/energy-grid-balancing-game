@@ -88,8 +88,7 @@ class BaseGenerator:
             Returns:
                 dispatch power (dict): dispatched power at each timestamp
                 spare power (dict): spare power at each timestamp
-                co2 (float): total CO2e generated [kg]
-                cost (float): total cost [EUR]
+                totals (dict): totals across entire time window
         """
         dispatch_power = {
             k: np.clip(req, min_, max_)
@@ -103,7 +102,19 @@ class BaseGenerator:
                 dispatch_power.values(), self.max_power.items()
             )
         }
+        totals = self.calculate_dispatch_totals(dispatch_power, spare_power)
 
+        return dispatch_power, spare_power, totals
+
+    def calculate_dispatch_totals(self, dispatch_power, spare_power) -> dict:
+        """
+        Calculate dispatched energy totals across time window
+            Parameters:
+                dispatch power (dict): dispatched power at each timestamp
+                spare power (dict): spare power at each timestamp
+            Returns:
+                totals (dict): totals across entire time window
+        """
         # total energy
         dispatch_energy = utils.total_energy(dispatch_power.values(), self.time_steps)
         spare_energy = utils.total_energy(spare_power.values(), self.time_steps)
@@ -115,19 +126,18 @@ class BaseGenerator:
         carbon_tax = co2 * CARBON_TAX if self.carbon_tax else 0
         social_carbon_cost = co2 * SOCIAL_CARBON_COST
 
-        return (
-            dispatch_power,
-            spare_power,
-            {
-                "dispatch_energy": dispatch_energy,
-                "spare_energy": spare_energy,
-                "co2": co2,
-                "capex": capex,
-                "opex": opex,
-                "carbon_tax": carbon_tax,
-                "social_carbon_cost": social_carbon_cost,
-            },
-        )
+        # combine into output
+        totals = {
+            "dispatch_energy": dispatch_energy,
+            "spare_energy": spare_energy,
+            "co2": co2,
+            "capex": capex,
+            "opex": opex,
+            "carbon_tax": carbon_tax,
+            "social_carbon_cost": social_carbon_cost,
+        }
+
+        return totals
 
 
 class DataGenerator(BaseGenerator):
