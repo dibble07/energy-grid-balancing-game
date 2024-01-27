@@ -39,14 +39,16 @@ with cost_tab:
     cost_chart_cont = st.empty()
 with spare_tab:
     spare_chart_cont = st.empty()
+
+# initialise values and state parameters
 cost_order = ["capex", "opex", "carbon_tax", "social_carbon_cost"]
 display_order = ["nuclear", "solar", "wind", "gas", "coal"]
-
-# initialise random week selection
 week_map = WEEK_MAP.copy()
 week_map["date"] = week_map["datetime"].dt.date
 if "week_ind" not in st.session_state:
     st.session_state["week_ind"] = int(week_map.sample(1).index[0])
+if "grid_optimum" not in st.session_state:
+    st.session_state["grid_optimum"] = {}
 
 # get user inputs
 with sidebar:
@@ -288,8 +290,6 @@ with spare_chart_cont:
         )
 
 # display optimum score
-if "grid_optimum" not in st.session_state:
-    st.session_state["grid_optimum"] = {}
 if week_no not in st.session_state["grid_optimum"]:
     st.session_state["grid_optimum"][week_no] = grid.optimum
 with opt_score_col:

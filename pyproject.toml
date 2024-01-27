@@ -17,6 +17,10 @@ numpy = "^1"
 openpyxl = "^3"
 black = {version = "^23", extras = ["jupyter"]}
 scipy = "^1"
+tqdm = "^4"
+jupyter = "^1"
+ipywidgets = "^8"
+seaborn = "^0"
 
 [tool.poetry.group.dev.dependencies]
 icecream = "^2"

@@ -1,4 +1,6 @@
+import json
 import os
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -94,7 +96,6 @@ def get_windows_range(windows, time_steps, icon_gap):
 
     # loop over all windows
     for window in windows:
-
         # identify window midpoint
         window = np.array(window, dtype="datetime64")
         midpoint_exact = (window[1] - window[0]) / 2 + window[0]
@@ -148,3 +149,15 @@ Your score is determined by the cost per unit of energy produced. The cost compr
 
 def titlify(x):
     return x.replace("_", " ").title()
+
+
+f_path = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    "weekly_optimum.json",
+)
+if os.path.isfile(f_path):
+    with open(f_path, "r") as f:
+        OPT_INIT_WEEKLY = json.loads(f.read())
+        OPT_INIT_WEEKLY = {int(k): v for k, v in OPT_INIT_WEEKLY.items()}
+else:
+    OPT_INIT_WEEKLY = {}
