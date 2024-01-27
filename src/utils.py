@@ -160,20 +160,4 @@ if os.path.isfile(f_path):
         OPT_INIT_WEEKLY = json.loads(f.read())
         OPT_INIT_WEEKLY = {int(k): v for k, v in OPT_INIT_WEEKLY.items()}
 else:
-    warnings.warn(f"No initial optimum file available in {f_path}")
     OPT_INIT_WEEKLY = {}
-
-
-def get_optimum_init_params(week):
-    if week in OPT_INIT_WEEKLY:
-        out = OPT_INIT_WEEKLY[week]
-    else:
-        warnings.warn(f"No initial optimum available for week {week}")
-        out = {
-            "solar": 0.32,
-            "wind": 1.01,
-            "nuclear": 0.52,
-            "gas": 0.46,
-            "coal": 0.00,
-        }
-    return out

@@ -12,7 +12,7 @@ from src.utils import (
     get_demand_curve,
     total_energy,
     get_windows,
-    get_optimum_init_params,
+    OPT_INIT_WEEKLY,
 )
 
 
@@ -113,7 +113,7 @@ class Grid:
                 return res
 
             # perform minimisation
-            optimum_init_params = get_optimum_init_params(self.week)
+            optimum_init_params = OPT_INIT_WEEKLY.get(self.week)
             init_value_options = [
                 optimum_init_params,
                 {
@@ -127,16 +127,17 @@ class Grid:
             for init_value, init_value_name in zip(
                 init_value_options, ["optimal", "conservative"]
             ):
-                for method in ["SLSQP", "COBYLA"]:
-                    res = optimise(init_value, method)
+                if init_value is not None:
+                    for method in ["SLSQP", "COBYLA"]:
+                        res = optimise(init_value, method)
+                        if res.success:
+                            break
+                        else:
+                            warnings.warn(
+                                f"Optimiser failed with method: {method} and init values: {init_value_name}"
+                            )
                     if res.success:
                         break
-                    else:
-                        warnings.warn(
-                            f"Optimiser failed with method: {method} and init values: {init_value_name}"
-                        )
-                if res.success:
-                    break
             if res.success:
                 self._optimum = {
                     "installed_capacity": {
