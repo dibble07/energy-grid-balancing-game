@@ -127,18 +127,7 @@ class BaseGenerator:
 
 
 class DataGenerator(BaseGenerator):
-    def __init__(
-        self,
-        time_steps,
-        installed_capacity,
-        week,
-        co2_oper,
-        cost_oper,
-        cost_inst,
-        carbon_tax,
-        min_output,
-        col,
-    ):
+    def __init__(self, week, col, *args, **kwargs):
         """
         Initialise technology specific values
         """
@@ -150,17 +139,14 @@ class DataGenerator(BaseGenerator):
             utils.POWER_DATA.loc[week_start : week_start + pd.Timedelta(days=7), col]
             / utils.POWER_DATA[col].max()
         )
-        assert all([x == y for x, y in zip(self.power_profile_norm.index, time_steps)])
-
-        super().__init__(
-            installed_capacity=installed_capacity,
-            min_output=min_output,
-            co2_oper=co2_oper,
-            cost_oper=cost_oper,
-            cost_inst=cost_inst,
-            carbon_tax=carbon_tax,
-            time_steps=time_steps,
+        assert all(
+            [
+                x == y
+                for x, y in zip(self.power_profile_norm.index, kwargs["time_steps"])
+            ]
         )
+
+        super().__init__(*args, **kwargs)
 
     def calculate_max_power_profile(self):
         # calculate daily power profile
