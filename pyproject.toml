@@ -20,6 +20,7 @@ scipy = "^1"
 tqdm = "^4"
 jupyter = "^1"
 ipywidgets = "^8"
+seaborn = "^0"
 
 [tool.poetry.group.dev.dependencies]
 icecream = "^2"
