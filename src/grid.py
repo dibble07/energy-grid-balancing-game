@@ -62,7 +62,7 @@ class Grid:
             dispatch_calculated = hasattr(self, "dispatch")
 
             # set scaling factor
-            scale = self.demand.mean()
+            scale = self.demand.max()
 
             # define dispatch calculation
             @cache
@@ -117,10 +117,10 @@ class Grid:
             init_value_options = [
                 optimum_init_params,
                 {
-                    "solar": 1 * self.demand.max() / self.demand.mean(),
-                    "wind": 1 * self.demand.max() / self.demand.mean(),
+                    "solar": 1,
+                    "wind": 1,
                     "nuclear": 0,
-                    "gas": 1 * self.demand.max() / self.demand.mean(),
+                    "gas": 1,
                     "coal": 0,
                 },
             ]
