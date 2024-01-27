@@ -86,17 +86,19 @@ class Grid:
                     self.time_steps,
                 )
                 return (
-                    cost / (useful_energy / 1e6 / 3600) if useful_energy > 0 else np.inf
+                    cost / (useful_energy / 1e6 / 3600) / 100
+                    if useful_energy > 0
+                    else np.inf
                 )
 
             # define contraints
             def cons_shortfall(x):
                 _, shortfall, _, _ = dispatch_calculation(tuple(x))
-                return -1 * shortfall.mean() / 1e6 / 3600 / 7
+                return -1 * shortfall.mean() / scale
 
             def cons_oversupply(x):
                 _, _, oversupply, _ = dispatch_calculation(tuple(x))
-                return -1 * oversupply.mean() / 1e6 / 3600 / 7
+                return -1 * oversupply.mean() / scale
 
             # define minimisation function
             def optimise(init, method):
