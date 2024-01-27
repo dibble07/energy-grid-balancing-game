@@ -86,9 +86,7 @@ class Grid:
                     self.time_steps,
                 )
                 return (
-                    cost / (useful_energy / 1e6 / 3600) / 100
-                    if useful_energy > 0
-                    else np.inf
+                    cost / (useful_energy / 1e6 / 3600) if useful_energy > 0 else np.inf
                 )
 
             # define contraints
