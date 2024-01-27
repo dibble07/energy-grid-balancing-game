@@ -325,7 +325,8 @@ class BatteryGenerator(BaseGenerator):
         pass
 
     def calculate_min_power_profile(self):
-        pass
+        "Calculate minimum power profile"
+        self.min_power = {k: 0 for k in self.time_steps}
 
     def calculate_dispatch(self, request_all) -> tuple[dict]:
         """
