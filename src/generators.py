@@ -117,6 +117,9 @@ class BaseGenerator:
         """
         # total energy
         dispatch_energy = utils.total_energy(dispatch_power.values(), self.time_steps)
+        spare_power = (
+            spare_power["dispatch"] if "dispatch" in spare_power else spare_power
+        )
         spare_energy = utils.total_energy(spare_power.values(), self.time_steps)
 
         # emissions and costs
@@ -317,3 +320,58 @@ class BatteryGenerator(BaseGenerator):
             carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
+
+    def calculate_max_power_profile(self):
+        pass
+
+    def calculate_min_power_profile(self):
+        pass
+
+    def calculate_dispatch(self, request_all) -> tuple[dict]:
+        """
+        Calculate dispatched/charged energy
+            Parameters:
+                request (dict): requested energy dispatch at each timestamp
+            Returns:
+                dispatch power (dict): dispatched power at each timestamp
+                spare power (dict): spare power at each timestamp
+                totals (dict): totals across entire time window
+        """
+        # initialise constants and outputs
+        stored_max = self.installed_capacity * self.storage_duration
+        stored_energy_all = {self.time_steps[0]: 0}
+        dispatch_all = {}
+        spare_all = {"dispatch": {}, "charge": {}}
+        dt = np.unique(np.diff(np.array(self.time_steps)))
+        assert len(dt) == 1
+        dt = dt[0].total_seconds()
+
+        for i in range(len(self.time_steps)):
+            # extract values for current time period
+            time = self.time_steps[i]
+            stored_energy = stored_energy_all[time]
+            request = request_all[time]
+
+            # calculate dispatch
+            dispatch_avail = min(stored_energy / dt, self.installed_capacity)
+            charge_avail = max(
+                (stored_energy - stored_max) / dt,
+                self.min_output * self.installed_capacity,
+            )
+            dispatch = np.clip(request, charge_avail, dispatch_avail)
+            dispatch_all[time] = dispatch
+
+            # calculate spare
+            spare_all["dispatch"][time] = dispatch_avail - max(dispatch, 0)
+            spare_all["charge"][time] = min(dispatch, 0) - charge_avail
+
+            # calculate battery stored energy for next period
+            if time != self.time_steps[-1]:
+                stored_energy_all[self.time_steps[i + 1]] = (
+                    stored_energy - dispatch * dt
+                )
+
+        # calculate totals
+        totals = self.calculate_dispatch_totals(dispatch_all, spare_all)
+
+        return dispatch_all, spare_all, totals
