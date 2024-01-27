@@ -188,7 +188,7 @@ spare_disp["variable"] = spare_disp["variable"].map(titlify)
 
 # display main chart
 with main_chart_cont:
-    for i in range(0, len(grid.dispatch), 1):
+    for i in range(0, len(grid.dispatch), 4):
         # obscure future data
         dispatch_disp_ = dispatch_disp.copy()
         dispatch_disp_.loc[

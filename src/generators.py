@@ -23,6 +23,7 @@ class BaseGenerator:
         self,
         installed_capacity,
         min_output,
+        storage_duration,
         co2_oper,
         cost_oper,
         cost_inst,
@@ -48,6 +49,9 @@ class BaseGenerator:
 
         # time constants
         self.time_steps = time_steps
+
+        # storage duration
+        self.storage_duration = storage_duration
 
         # capcity constraints
         self.min_output = min_output
@@ -159,6 +163,7 @@ class SolarGenerator(DataGenerator):
         time_steps,
         week,
         installed_capacity=None,
+        storage_duration=None,
         co2_oper=41000 * GRAM_MWH,
         cost_oper=18 * USD_KWY,
         cost_inst=1691 * USD_KW / 30 / 52,
@@ -170,6 +175,7 @@ class SolarGenerator(DataGenerator):
             installed_capacity=installed_capacity,
             week=week,
             min_output=min_output,
+            storage_duration=storage_duration,
             co2_oper=co2_oper,
             cost_oper=cost_oper,
             cost_inst=cost_inst,
@@ -185,6 +191,7 @@ class WindGenerator(DataGenerator):
         time_steps,
         week,
         installed_capacity=None,
+        storage_duration=None,
         co2_oper=11000 * GRAM_MWH,
         cost_oper=(116 + 102) / 2 * USD_KWY,
         cost_inst=(2080 + 2769) / 2 * USD_KW / 30 / 52,
@@ -196,6 +203,7 @@ class WindGenerator(DataGenerator):
             installed_capacity=installed_capacity,
             week=week,
             min_output=min_output,
+            storage_duration=storage_duration,
             co2_oper=co2_oper,
             cost_oper=cost_oper,
             cost_inst=cost_inst,
@@ -210,6 +218,7 @@ class NuclearGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity=None,
+        storage_duration=None,
         co2_oper=24000 * GRAM_MWH,
         cost_oper=152 * USD_KWY,
         cost_inst=7468 * USD_KW / 60 / 52,
@@ -219,6 +228,7 @@ class NuclearGenerator(BaseGenerator):
         super().__init__(
             installed_capacity=installed_capacity,
             min_output=min_output,
+            storage_duration=storage_duration,
             co2_oper=co2_oper,
             cost_oper=cost_oper,
             cost_inst=cost_inst,
@@ -235,6 +245,7 @@ class CoalGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity=None,
+        storage_duration=None,
         co2_oper=980_000 * GRAM_MWH,
         cost_oper=(77 + 150) / 2 * USD_KWY,
         cost_inst=(2857 + 5002) / 2 * USD_KW / 30 / 52,
@@ -244,6 +255,7 @@ class CoalGenerator(BaseGenerator):
         super().__init__(
             installed_capacity=installed_capacity,
             min_output=min_output,
+            storage_duration=storage_duration,
             co2_oper=co2_oper,
             cost_oper=cost_oper,
             cost_inst=cost_inst,
@@ -260,6 +272,7 @@ class GasGenerator(BaseGenerator):
         self,
         time_steps,
         installed_capacity=None,
+        storage_duration=None,
         co2_oper=430_000 * GRAM_MWH,
         cost_oper=(24 + 31) / 2 * USD_KWY,
         cost_inst=(1003 + 1148) / 2 * USD_KW / 30 / 52,
@@ -269,6 +282,7 @@ class GasGenerator(BaseGenerator):
         super().__init__(
             installed_capacity=installed_capacity,
             min_output=min_output,
+            storage_duration=storage_duration,
             co2_oper=co2_oper,
             cost_oper=cost_oper,
             cost_inst=cost_inst,
