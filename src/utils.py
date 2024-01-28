@@ -20,6 +20,7 @@ POWER_DATA = (
     * 1e9
 )
 POWER_DATA.index = pd.DatetimeIndex(POWER_DATA.index)
+POWER_DATA = POWER_DATA.resample("1h").ffill()
 POWER_DATA.sort_index(inplace=True)
 WEEK_MAP = (
     POWER_DATA.index.isocalendar()
