@@ -11,6 +11,7 @@ from src.generators import (
     NuclearGenerator,
     SolarGenerator,
     WindGenerator,
+    BatteryGenerator,
 )
 from src.utils import (
     WEEK_MAP,
@@ -42,7 +43,7 @@ with spare_tab:
 
 # initialise values and state parameters
 cost_order = ["capex", "opex", "carbon_tax", "social_carbon_cost"]
-display_order = ["nuclear", "solar", "wind", "gas", "coal"]
+display_order = ["nuclear", "solar", "wind", "gas", "coal", "battery"]
 week_map = WEEK_MAP.copy()
 week_map["date"] = week_map["datetime"].dt.date
 if "week_ind" not in st.session_state:
@@ -89,6 +90,11 @@ with sidebar:
             st.markdown(
                 f"{installed_capacity['wind']/1e6/6.8:,.0f} Offshore Wind Turbines"
             )
+        installed_capacity["battery"] = (
+            st.number_input("Battery (MW)", min_value=0, value=0) * 1e6
+        )
+        if installed_capacity["battery"] > 0:
+            st.markdown(f"{installed_capacity['battery']/1e6/50:,.0f} Battery units")
     with st.expander("Week commencing", expanded=True):
         week_dt = st.selectbox(
             " ", week_map["date"].values, index=st.session_state["week_ind"]
@@ -102,6 +108,7 @@ grid = Grid(
         "nuclear": NuclearGenerator,
         "solar": SolarGenerator,
         "wind": WindGenerator,
+        "battery": BatteryGenerator,
         "gas": GasGenerator,
         "coal": CoalGenerator,
     },
@@ -141,7 +148,9 @@ with user_score_col:
         )
 
 # calculate dispatch display data
-dispatch_disp = pd.melt((grid.dispatch / 1e6).reset_index(), id_vars=["index"])
+dispatch_disp = pd.melt(
+    (grid.dispatch.clip(lower=0) / 1e6).reset_index(), id_vars=["index"]
+)
 dispatch_disp["order"] = dispatch_disp["variable"].map(
     {k: i for i, k in enumerate(display_order)}
 )
@@ -149,6 +158,7 @@ dispatch_disp["variable"] = dispatch_disp["variable"].map(titlify)
 
 # calculate demand display data
 demand_disp = pd.melt((grid.demand / 1e6).reset_index(), id_vars=["index"])
+demand_disp["variable"] = demand_disp["variable"].map(titlify)
 
 # calculate icon display data
 icon_gap = np.timedelta64(12, "h")
