@@ -342,7 +342,8 @@ class BatteryGenerator(BaseGenerator):
         stored_max = self.installed_capacity * self.storage_duration
         stored_energy_all = {self.time_steps[0]: 0}
         dispatch_all = {}
-        spare_all = {"dispatch": {}, "charge": {}}
+        spare_dispatch_all = {}
+        spare_charge_all = {}
         dt = np.unique(np.diff(np.array(self.time_steps)))
         assert len(dt) == 1
         dt = dt[0].total_seconds()
@@ -363,16 +364,24 @@ class BatteryGenerator(BaseGenerator):
             dispatch_all[time] = dispatch
 
             # calculate spare
-            spare_all["dispatch"][time] = dispatch_avail - max(dispatch, 0)
-            spare_all["charge"][time] = min(dispatch, 0) - charge_avail
+            spare_dispatch_all[time] = dispatch_avail - max(dispatch, 0)
+            spare_charge_all[time] = min(dispatch, 0) - charge_avail
 
             # calculate battery stored energy for next period
             if time != self.time_steps[-1]:
-                stored_energy_all[self.time_steps[i + 1]] = (
-                    stored_energy - dispatch * dt
+                stored_energy_all[self.time_steps[i + 1]] = max(
+                    0, stored_energy - dispatch * dt
                 )
 
         # calculate totals
-        totals = self.calculate_dispatch_totals(dispatch_all, spare_all)
+        totals = self.calculate_dispatch_totals(
+            {k: max(v, 0) for k, v in dispatch_all.items()}, spare_dispatch_all
+        )
 
-        return dispatch_all, spare_all, totals
+        return (
+            dispatch_all,
+            spare_dispatch_all,
+            spare_charge_all,
+            stored_energy_all,
+            totals,
+        )
