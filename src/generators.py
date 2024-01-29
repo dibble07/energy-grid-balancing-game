@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import pandas as pd
 
@@ -84,8 +86,7 @@ class BaseGenerator:
             Returns:
                 dispatch power (dict): dispatched power at each timestamp
                 spare power (dict): spare power at each timestamp
-                co2 (float): total CO2e generated [kg]
-                cost (float): total cost [EUR]
+                totals (dict): totals across entire time window
         """
         dispatch_power = {
             k: np.clip(req, min_, max_)
@@ -99,9 +100,24 @@ class BaseGenerator:
                 dispatch_power.values(), self.max_power.items()
             )
         }
+        totals = self.calculate_dispatch_totals(dispatch_power, spare_power)
 
+        return dispatch_power, spare_power, totals
+
+    def calculate_dispatch_totals(self, dispatch_power, spare_power) -> dict:
+        """
+        Calculate dispatched energy totals across time window
+            Parameters:
+                dispatch power (dict): dispatched power at each timestamp
+                spare power (dict): spare power at each timestamp
+            Returns:
+                totals (dict): totals across entire time window
+        """
         # total energy
         dispatch_energy = utils.total_energy(dispatch_power.values(), self.time_steps)
+        spare_power = (
+            spare_power["dispatch"] if "dispatch" in spare_power else spare_power
+        )
         spare_energy = utils.total_energy(spare_power.values(), self.time_steps)
 
         # emissions and costs
@@ -111,19 +127,18 @@ class BaseGenerator:
         carbon_tax = co2 * CARBON_TAX if self.carbon_tax else 0
         social_carbon_cost = co2 * SOCIAL_CARBON_COST
 
-        return (
-            dispatch_power,
-            spare_power,
-            {
-                "dispatch_energy": dispatch_energy,
-                "spare_energy": spare_energy,
-                "co2": co2,
-                "capex": capex,
-                "opex": opex,
-                "carbon_tax": carbon_tax,
-                "social_carbon_cost": social_carbon_cost,
-            },
-        )
+        # combine into output
+        totals = {
+            "dispatch_energy": dispatch_energy,
+            "spare_energy": spare_energy,
+            "co2": co2,
+            "capex": capex,
+            "opex": opex,
+            "carbon_tax": carbon_tax,
+            "social_carbon_cost": social_carbon_cost,
+        }
+
+        return totals
 
 
 class DataGenerator(BaseGenerator):
@@ -225,9 +240,6 @@ class NuclearGenerator(BaseGenerator):
             carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
-        """
-        Initialise technology specific values
-        """
 
 
 class CoalGenerator(BaseGenerator):
@@ -250,9 +262,6 @@ class CoalGenerator(BaseGenerator):
             carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
-        """
-        Initialise technology specific values
-        """
 
 
 class GasGenerator(BaseGenerator):
@@ -275,6 +284,97 @@ class GasGenerator(BaseGenerator):
             carbon_tax=carbon_tax,
             time_steps=time_steps,
         )
+
+
+class BatteryGenerator(BaseGenerator):
+    def __init__(
+        self,
+        time_steps,
+        installed_capacity=None,
+        storage_duration=4 * 3600,
+        unidirectional_efficiency=0.85**0.5,
+        co2_oper=78000 * GRAM_MWH,
+        cost_oper=(24 + 88) / 2 * USD_KWY,
+        cost_inst=(943 + 3520) / 2 * USD_KW / 15 / 52,
+        carbon_tax=False,
+        min_output=-1,
+    ):
+        super().__init__(
+            installed_capacity=installed_capacity,
+            min_output=min_output,
+            co2_oper=co2_oper,
+            cost_oper=cost_oper,
+            cost_inst=cost_inst,
+            carbon_tax=carbon_tax,
+            time_steps=time_steps,
+        )
+        self.storage_duration = storage_duration
+        self.unidirectional_efficiency = unidirectional_efficiency
+
+    def calculate_max_power_profile(self):
+        pass
+
+    def calculate_min_power_profile(self):
+        "Calculate minimum power profile"
+        self.min_power = {k: 0 for k in self.time_steps}
+
+    def calculate_dispatch(self, request_all) -> tuple[dict]:
         """
-        Initialise technology specific values
+        Calculate dispatched/charged energy
+            Parameters:
+                request (dict): requested energy dispatch at each timestamp
+            Returns:
+                dispatch power (dict): dispatched power at each timestamp
+                spare power (dict): spare power at each timestamp
+                totals (dict): totals across entire time window
         """
+        # initialise constants and outputs
+        stored_max = self.installed_capacity * self.storage_duration
+        stored_energy_all = {self.time_steps[0]: 0}
+        dispatch_all = {}
+        spare_dispatch_all = {}
+        spare_charge_all = {}
+        dt = np.unique(np.diff(np.array(self.time_steps)))
+        assert len(dt) == 1
+        dt = dt[0].total_seconds()
+
+        for i in range(len(self.time_steps)):
+            # extract values for current time period
+            time = self.time_steps[i]
+            stored_energy = stored_energy_all[time]
+            request = request_all[time]
+
+            # calculate dispatch
+            dispatch_avail = min(stored_energy / dt, self.installed_capacity)
+            charge_avail = max(
+                (stored_energy - stored_max) / dt,
+                self.min_output * self.installed_capacity,
+            )
+            dispatch = np.clip(request, charge_avail, dispatch_avail)
+            dispatch_all[time] = dispatch
+
+            # calculate spare
+            spare_dispatch_all[time] = dispatch_avail - max(dispatch, 0)
+            spare_charge_all[time] = min(dispatch, 0) - charge_avail
+
+            # calculate battery stored energy for next period
+            if time != self.time_steps[-1]:
+                efficiency_factor = self.unidirectional_efficiency ** (
+                    -1 * math.copysign(1, dispatch)
+                )
+                stored_energy_all[self.time_steps[i + 1]] = max(
+                    0, stored_energy - dispatch * dt * efficiency_factor
+                )
+
+        # calculate totals
+        totals = self.calculate_dispatch_totals(
+            {k: max(v, 0) for k, v in dispatch_all.items()}, spare_dispatch_all
+        )
+
+        return (
+            dispatch_all,
+            spare_dispatch_all,
+            spare_charge_all,
+            stored_energy_all,
+            totals,
+        )

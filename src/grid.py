@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
-from src.generators import DataGenerator
+from src.generators import DataGenerator, BatteryGenerator
 from src.utils import (
     get_demand_curve,
     total_energy,
@@ -120,6 +120,7 @@ class Grid:
                     "solar": 1,
                     "wind": 1,
                     "nuclear": 0,
+                    "battery": 1,
                     "gas": 1,
                     "coal": 0,
                 },
@@ -158,24 +159,64 @@ class Grid:
 
     def calculate_dispatch(self, incl_windows=True):
         "calculate dispatch and spare capacity of each generator"
-        # initially dispatch levels at minimum for each generator
-        self.reset_dispatch()
-        dispatch = self.min_power_profiles
+        # initialise battery request status
+        battery_request = None
+        spare_charge = None
+        battery_soc = None
         spare = {}
         totals = {}
 
-        # loop over generation sources in order of preference
-        for name, gen in self.generators.items():
-            # calculate difference between current dispatch and demand
-            diff = self.demand - pd.DataFrame(dispatch).sum(axis=1)
+        # repeat until all all generators have been processed
+        while len(spare) != len(self.generators):
 
-            # request generator provides its minimum plus the shortfall
-            request = (diff + pd.Series(gen.min_power)).to_dict()
-            dispatch[name], spare[name], totals[name] = gen.calculate_dispatch(request)
+            # reset/initialise outputs
+            self.reset_dispatch()
+            dispatch = self.min_power_profiles
+            battery_charged = False
+
+            # loop over generation sources in order of preference
+            for name, gen in self.generators.items():
+                # calculate difference between current dispatch and demand
+                diff = self.demand - pd.DataFrame(dispatch).sum(axis=1)
+
+                # claculate request for generator (its minimum plus the shortfall plus battery charging)
+                request = diff + pd.Series(gen.min_power)
+                if (
+                    "battery" in self.generators
+                    and not battery_charged
+                    and gen.__class__ is not BatteryGenerator
+                ):
+                    request = request - (
+                        battery_request
+                        if battery_request is not None
+                        else self.generators["battery"].installed_capacity
+                        * self.generators["battery"].min_output
+                    )
+
+                # calculate generators dispatch response to request
+                if gen.__class__ is BatteryGenerator:
+                    (
+                        dispatch[name],
+                        spare[name],
+                        spare_charge,
+                        battery_soc,
+                        totals[name],
+                    ) = gen.calculate_dispatch(request.to_dict())
+                    battery_charged = True
+                    # restart once battery request is known to avoid not incorrect curtailment
+                    if battery_request is None:
+                        battery_request = pd.Series(dispatch[name]).clip(upper=0)
+                        break
+                else:
+                    dispatch[name], spare[name], totals[name] = gen.calculate_dispatch(
+                        request.to_dict()
+                    )
 
         # save as dataframes
         self.dispatch = pd.DataFrame(dispatch)
         self.spare = pd.DataFrame(spare)
+        self.spare_charge = pd.Series(spare_charge)
+        self.battery_soc = pd.Series(battery_soc)
         self.totals = pd.DataFrame(totals)
 
         # calculate shortfall and oversupply
