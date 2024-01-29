@@ -286,7 +286,8 @@ with main_chart_cont:
             alt.layer(*layers).encode(
                 color=alt.Color(
                     sort=[titlify(dispatch_rename(x)) for x in dispatch_display_order]
-                    + [titlify(charge_rename(x)) for x in demand_display_order]
+                    + [titlify(charge_rename(x)) for x in demand_display_order],
+                    legend=alt.Legend(title=None),
                 )
             ),
             use_container_width=True,
@@ -301,7 +302,7 @@ with cost_chart_cont:
             .encode(
                 alt.Y("variable", axis=alt.Axis(labelAngle=0)),
                 alt.X("value", title="Cost [EUR/MWh]", stack=True),
-                alt.Color("index"),
+                alt.Color("index", legend=alt.Legend(title=None)),
                 alt.Order("order"),
                 opacity={"value": 0.7},
                 tooltip=alt.value(None),
@@ -319,7 +320,9 @@ with spare_chart_cont:
                 alt.X("index", axis=alt.Axis(tickCount="day")),
                 alt.Y("value", title="Power [MW]"),
                 alt.Color(
-                    "variable", sort=[titlify(x) for x in dispatch_display_order]
+                    "variable",
+                    sort=[titlify(x) for x in dispatch_display_order],
+                    legend=alt.Legend(title=None),
                 ),
                 alt.Order("order"),
                 opacity={"value": 0.7},
