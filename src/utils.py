@@ -162,3 +162,11 @@ if os.path.isfile(f_path):
         OPT_INIT_WEEKLY = {int(k): v for k, v in OPT_INIT_WEEKLY.items()}
 else:
     OPT_INIT_WEEKLY = {}
+
+
+def dispatch_rename(x):
+    return {"battery": "battery (dispatch)"}.get(x, x)
+
+
+def charge_rename(x):
+    return {"battery": "battery (charge)"}.get(x, x)

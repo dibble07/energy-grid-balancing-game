@@ -19,6 +19,8 @@ from src.utils import (
     get_windows_range,
     get_game_description,
     titlify,
+    dispatch_rename,
+    charge_rename,
 )
 
 # initialise app
@@ -36,7 +38,7 @@ with st.container():
     user_score_col, opt_score_col = st.columns(2)
 main_chart_cont = st.empty()
 cost_tab, spare_tab, battery_soc_tab = st.tabs(
-    ["Cost breakdown", "Spare capacity", "Battery State of Charge"]
+    ["Cost Components", "Spare Dispatch", "Battery State of Charge"]
 )
 with cost_tab:
     cost_chart_cont = st.empty()
@@ -46,8 +48,9 @@ with battery_soc_tab:
     battery_soc_chart_cont = st.empty()
 
 # initialise values and state parameters
-cost_order = ["capex", "opex", "carbon_tax", "social_carbon_cost"]
-display_order = ["nuclear", "solar", "wind", "gas", "coal", "battery"]
+display_cost_order = ["capex", "opex", "carbon_tax", "social_carbon_cost"]
+dispatch_display_order = ["nuclear", "solar", "wind", "gas", "coal", "battery"]
+demand_display_order = ["demand", "battery"]
 week_map = WEEK_MAP.copy()
 week_map["date"] = week_map["datetime"].dt.date
 if "week_ind" not in st.session_state:
@@ -156,13 +159,19 @@ dispatch_disp = pd.melt(
     (grid.dispatch.clip(lower=0) / 1e6).reset_index(), id_vars=["index"]
 )
 dispatch_disp["order"] = dispatch_disp["variable"].map(
-    {k: i for i, k in enumerate(display_order)}
+    {k: i for i, k in enumerate(dispatch_display_order)}
 )
-dispatch_disp["variable"] = dispatch_disp["variable"].map(titlify)
+dispatch_disp["variable"] = dispatch_disp["variable"].map(dispatch_rename).map(titlify)
 
 # calculate demand display data
-demand_disp = pd.melt((grid.demand / 1e6).reset_index(), id_vars=["index"])
-demand_disp["variable"] = demand_disp["variable"].map(titlify)
+demand_disp = pd.concat(
+    [grid.demand, (grid.dispatch["battery"] * -1).clip(lower=0)], axis=1
+)
+demand_disp = pd.melt((demand_disp / 1e6).reset_index(), id_vars=["index"])
+demand_disp["order"] = demand_disp["variable"].map(
+    {k: i for i, k in enumerate(demand_display_order)}
+)
+demand_disp["variable"] = demand_disp["variable"].map(charge_rename).map(titlify)
 
 # calculate icon display data
 icon_gap = np.timedelta64(12, "h")
@@ -185,18 +194,20 @@ if grid.oversupply_windows:
     demand_met["icon"].extend(["⚡"] * len(oversupply_idx))
 demand_met = pd.DataFrame(demand_met)
 
-# calculate cost breakdown data
+# calculate cost component data
 costs_disp = grid.totals.loc[["capex", "opex", "carbon_tax", "social_carbon_cost"]] / (
     grid.totals.loc["dispatch_energy"] / 1e6 / 3600
 ).fillna(0).rename(index={"capex": "installation", "opex": "operation"})
 costs_disp = pd.melt(costs_disp.reset_index(), id_vars=["index"])
-costs_disp["order"] = costs_disp["index"].map({k: i for i, k in enumerate(cost_order)})
+costs_disp["order"] = costs_disp["index"].map(
+    {k: i for i, k in enumerate(display_cost_order)}
+)
 costs_disp[["index", "variable"]] = costs_disp[["index", "variable"]].map(titlify)
 
 # calculate spare dispatch data
 spare_disp = pd.melt((grid.spare / 1e6).reset_index(), id_vars=["index"])
 spare_disp["order"] = spare_disp["variable"].map(
-    {k: i for i, k in enumerate(display_order)}
+    {k: i for i, k in enumerate(dispatch_display_order)}
 )
 spare_disp["variable"] = spare_disp["variable"].map(titlify)
 
@@ -240,8 +251,9 @@ with main_chart_cont:
             .mark_line()
             .encode(
                 alt.X("index"),
-                alt.Y("value"),
+                alt.Y("value", stack=True),
                 alt.Color("variable"),
+                alt.Order("order"),
                 opacity={"value": 0.7},
                 tooltip=alt.value(None),
             )
@@ -269,12 +281,15 @@ with main_chart_cont:
         ) + ((demand_met_chart,) if demand_met_chart else tuple())
         st.altair_chart(
             alt.layer(*layers).encode(
-                color=alt.Color(sort=[titlify(x) for x in display_order + ["demand"]])
+                color=alt.Color(
+                    sort=[titlify(dispatch_rename(x)) for x in dispatch_display_order]
+                    + [titlify(charge_rename(x)) for x in demand_display_order]
+                )
             ),
             use_container_width=True,
         )
 
-# display cost breakdown chart
+# display cost component chart
 with cost_chart_cont:
     if sum(installed_capacity.values()) > 0:
         st.altair_chart(
@@ -300,7 +315,9 @@ with spare_chart_cont:
             .encode(
                 alt.X("index", axis=alt.Axis(tickCount="day")),
                 alt.Y("value", title="Power [MW]"),
-                alt.Color("variable", sort=[titlify(x) for x in display_order]),
+                alt.Color(
+                    "variable", sort=[titlify(x) for x in dispatch_display_order]
+                ),
                 alt.Order("order"),
                 opacity={"value": 0.7},
                 tooltip=alt.value(None),
