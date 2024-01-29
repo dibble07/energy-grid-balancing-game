@@ -189,7 +189,10 @@ if grid.oversupply_windows:
     )
     demand_met["index"].extend(oversupply_idx)
     demand_met["value"].extend(
-        [grid.dispatch.sum(axis=1)[pd.Timestamp(i)] / 1e6 for i in oversupply_idx]
+        [
+            grid.dispatch.clip(lower=0).sum(axis=1)[pd.Timestamp(i)] / 1e6
+            for i in oversupply_idx
+        ]
     )
     demand_met["icon"].extend(["⚡"] * len(oversupply_idx))
 demand_met = pd.DataFrame(demand_met)
