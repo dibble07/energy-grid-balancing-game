@@ -239,7 +239,7 @@ with main_chart_cont:
             alt.Chart(dispatch_disp_)
             .mark_area()
             .encode(
-                alt.X("index", axis=alt.Axis(tickCount="day")),
+                alt.X("index", title="", axis=alt.Axis(tickCount="day")),
                 alt.Y("value", title="Power [MW]", stack=True),
                 alt.Color("variable"),
                 alt.Order("order"),
