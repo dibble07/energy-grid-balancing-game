@@ -168,7 +168,6 @@ class Grid:
 
         # repeat until all all generators have been processed
         while len(spare) != len(self.generators):
-
             # reset/initialise outputs
             self.reset_dispatch()
             dispatch = self.min_power_profiles
