@@ -300,7 +300,7 @@ with cost_chart_cont:
             alt.Chart(costs_disp)
             .mark_bar()
             .encode(
-                alt.Y("variable", axis=alt.Axis(labelAngle=0)),
+                alt.Y("variable", title="", axis=alt.Axis(labelAngle=0)),
                 alt.X("value", title="Cost [EUR/MWh]", stack=True),
                 alt.Color("index", legend=alt.Legend(title=None)),
                 alt.Order("order"),
@@ -317,7 +317,7 @@ with spare_chart_cont:
             alt.Chart(spare_disp)
             .mark_area()
             .encode(
-                alt.X("index", axis=alt.Axis(tickCount="day")),
+                alt.X("index", title="", axis=alt.Axis(tickCount="day")),
                 alt.Y("value", title="Power [MW]"),
                 alt.Color(
                     "variable",
