@@ -35,11 +35,15 @@ sidebar = st.sidebar
 with st.container():
     user_score_col, opt_score_col = st.columns(2)
 main_chart_cont = st.empty()
-cost_tab, spare_tab = st.tabs(["Cost breakdown", "Spare capacity"])
+cost_tab, spare_tab, battery_soc_tab = st.tabs(
+    ["Cost breakdown", "Spare capacity", "Battery State of Charge"]
+)
 with cost_tab:
     cost_chart_cont = st.empty()
 with spare_tab:
     spare_chart_cont = st.empty()
+with battery_soc_tab:
+    battery_soc_chart_cont = st.empty()
 
 # initialise values and state parameters
 cost_order = ["capex", "opex", "carbon_tax", "social_carbon_cost"]
@@ -189,12 +193,17 @@ costs_disp = pd.melt(costs_disp.reset_index(), id_vars=["index"])
 costs_disp["order"] = costs_disp["index"].map({k: i for i, k in enumerate(cost_order)})
 costs_disp[["index", "variable"]] = costs_disp[["index", "variable"]].map(titlify)
 
-# data to plot
+# calculate spare dispatch data
 spare_disp = pd.melt((grid.spare / 1e6).reset_index(), id_vars=["index"])
 spare_disp["order"] = spare_disp["variable"].map(
     {k: i for i, k in enumerate(display_order)}
 )
 spare_disp["variable"] = spare_disp["variable"].map(titlify)
+
+# calculate battery state of charge data
+battery_soc_disp = pd.melt(
+    (grid.battery_soc / 1e6 / 3600).reset_index(), id_vars=["index"]
+)
 
 # display main chart
 with main_chart_cont:
@@ -293,6 +302,34 @@ with spare_chart_cont:
                 alt.Y("value", title="Power [MW]"),
                 alt.Color("variable", sort=[titlify(x) for x in display_order]),
                 alt.Order("order"),
+                opacity={"value": 0.7},
+                tooltip=alt.value(None),
+            ),
+            use_container_width=True,
+        )
+
+# display battery soc chart
+with battery_soc_chart_cont:
+    if installed_capacity["battery"] > 0:
+        battery = grid.generators["battery"]
+        st.altair_chart(
+            alt.Chart(battery_soc_disp)
+            .mark_area()
+            .encode(
+                alt.X("index", title="", axis=alt.Axis(tickCount="day")),
+                alt.Y(
+                    "value",
+                    title="Energy [MWh]",
+                    scale=alt.Scale(
+                        domain=[
+                            0,
+                            battery.installed_capacity
+                            * battery.storage_duration
+                            / 1e6
+                            / 3600,
+                        ]
+                    ),
+                ),
                 opacity={"value": 0.7},
                 tooltip=alt.value(None),
             ),
