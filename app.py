@@ -60,7 +60,7 @@ if "grid_optimum" not in st.session_state:
 
 # get user inputs
 with sidebar:
-    with st.expander("Gameplay", expanded=False):
+    with st.expander("Gameplay", expanded=True):
         st.markdown(get_game_description())
     with st.expander("Generation sources", expanded=True):
         installed_capacity = {}
@@ -221,7 +221,7 @@ battery_soc_disp = pd.melt(
 
 # display main chart
 with main_chart_cont:
-    for i in range(0, len(grid.dispatch), 4):
+    for i in range(0, len(grid.dispatch), 6):
         # obscure future data
         dispatch_disp_ = dispatch_disp.copy()
         dispatch_disp_.loc[

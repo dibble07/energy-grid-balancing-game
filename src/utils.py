@@ -143,14 +143,13 @@ Your score is determined by the cost per unit of energy produced. The cost compr
 - Erratic power profile
 - Low carbon emissions
 ### Battery
-- Utilise cheap surplus energy
-- Expensive per unit stored
+- Stores up to 4 hours of maximum power
+- Expensive per unit stored but can utilise cheap surplus energy
 - Low carbon emissions
 ## Assumptions
 - Generators can ramp up and down infinitely quickly
 - Coal, gas and nuclear generators can't be turned off completely
-- Battery will charge as quickly posibble from surplus solar, wind and nuclear
-- Battery will discharge as quickly posibble ahead of extra gas or coal dispatch
+- Battery will charge as quickly posibble from surplus solar, wind and nuclear and it will discharge as quickly posibble ahead of extra gas or coal
 """
 
 
