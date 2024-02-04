@@ -13,7 +13,6 @@ import src.utils as utils
 # technology lifespans - https://atb.nrel.gov/electricity/2023/definitions#costrecoveryperiod
 
 # constants for cost calculations
-USD_KWY = 0.92 / 1e3
 USD_KW = 0.92 / 1e3
 GRAM_MWH = 0.001 / (1e6 * 3600)
 CARBON_TAX = 86 / 1000
@@ -175,7 +174,7 @@ class SolarGenerator(DataGenerator):
         week,
         installed_capacity=None,
         co2_oper=41000 * GRAM_MWH,
-        cost_oper=18 * USD_KWY / 52,
+        cost_oper=18 * USD_KW / 52,
         cost_inst=1691 * USD_KW / 30 / 52,
         carbon_tax=False,
         min_output=0,
@@ -201,7 +200,7 @@ class WindGenerator(DataGenerator):
         week,
         installed_capacity=None,
         co2_oper=11000 * GRAM_MWH,
-        cost_oper=(116 + 102) / 2 * USD_KWY / 52,
+        cost_oper=(116 + 102) / 2 * USD_KW / 52,
         cost_inst=(2080 + 2769) / 2 * USD_KW / 30 / 52,
         carbon_tax=False,
         min_output=0,
@@ -226,7 +225,7 @@ class NuclearGenerator(BaseGenerator):
         time_steps,
         installed_capacity=None,
         co2_oper=24000 * GRAM_MWH,
-        cost_oper=152 * USD_KWY / 52,
+        cost_oper=152 * USD_KW / 52,
         cost_inst=7468 * USD_KW / 60 / 52,
         carbon_tax=False,
         min_output=1.0,
@@ -248,7 +247,7 @@ class CoalGenerator(BaseGenerator):
         time_steps,
         installed_capacity=None,
         co2_oper=980_000 * GRAM_MWH,
-        cost_oper=(77 + 150) / 2 * USD_KWY / 52,
+        cost_oper=(77 + 150) / 2 * USD_KW / 52,
         cost_inst=(2857 + 5002) / 2 * USD_KW / 30 / 52,
         carbon_tax=True,
         min_output=0.32,
@@ -270,7 +269,7 @@ class GasGenerator(BaseGenerator):
         time_steps,
         installed_capacity=None,
         co2_oper=430_000 * GRAM_MWH,
-        cost_oper=(24 + 31) / 2 * USD_KWY / 52,
+        cost_oper=(24 + 31) / 2 * USD_KW / 52,
         cost_inst=(1003 + 1148) / 2 * USD_KW / 30 / 52,
         carbon_tax=True,
         min_output=0.35,
@@ -294,7 +293,7 @@ class BatteryGenerator(BaseGenerator):
         storage_duration=4 * 3600,
         unidirectional_efficiency=0.85**0.5,
         co2_oper=78000 * GRAM_MWH,
-        cost_oper=(24 + 88) / 2 * USD_KWY / 52,
+        cost_oper=(24 + 88) / 2 * USD_KW / 52,
         cost_inst=(943 + 3520) / 2 * USD_KW / 15 / 52,
         carbon_tax=False,
         min_output=-1,
