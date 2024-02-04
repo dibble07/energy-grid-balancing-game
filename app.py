@@ -64,18 +64,6 @@ with sidebar:
         st.markdown(get_game_description())
     with st.expander("Generation sources", expanded=True):
         installed_capacity = {}
-        installed_capacity["coal"] = (
-            st.number_input("Coal (MW)", min_value=0, value=0) * 1e6
-        )
-        if installed_capacity["coal"] > 0:
-            st.markdown(
-                f"{installed_capacity['coal']/1e6/1650:,.0f} Coal Power Stations"
-            )
-        installed_capacity["gas"] = (
-            st.number_input("Gas (MW)", min_value=0, value=0) * 1e6
-        )
-        if installed_capacity["gas"] > 0:
-            st.markdown(f"{installed_capacity['gas']/1e6/650:,.0f} Gas Power Stations")
         installed_capacity["nuclear"] = (
             st.number_input("Nuclear (MW)", min_value=0, value=0) * 1e6
         )
@@ -96,6 +84,18 @@ with sidebar:
         if installed_capacity["wind"] > 0:
             st.markdown(
                 f"{installed_capacity['wind']/1e6/6.8:,.0f} Offshore Wind Turbines"
+            )
+        installed_capacity["gas"] = (
+            st.number_input("Gas (MW)", min_value=0, value=0) * 1e6
+        )
+        if installed_capacity["gas"] > 0:
+            st.markdown(f"{installed_capacity['gas']/1e6/650:,.0f} Gas Power Stations")
+        installed_capacity["coal"] = (
+            st.number_input("Coal (MW)", min_value=0, value=0) * 1e6
+        )
+        if installed_capacity["coal"] > 0:
+            st.markdown(
+                f"{installed_capacity['coal']/1e6/1650:,.0f} Coal Power Stations"
             )
         installed_capacity["battery"] = (
             st.number_input("Battery (MW)", min_value=0, value=0) * 1e6
