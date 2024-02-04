@@ -302,7 +302,11 @@ with cost_chart_cont:
             .encode(
                 alt.Y("variable", title="", axis=alt.Axis(labelAngle=0)),
                 alt.X("value", title="Cost [EUR/MWh]", stack=True),
-                alt.Color("index", legend=alt.Legend(title=None)),
+                alt.Color(
+                    "index",
+                    sort=[titlify(x) for x in display_cost_order],
+                    legend=alt.Legend(title=None),
+                ),
                 alt.Order("order"),
                 opacity={"value": 0.7},
                 tooltip=alt.value(None),
