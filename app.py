@@ -116,12 +116,12 @@ with sidebar:
         )
     with st.expander("Feedback", expanded=True):
         collector.st_feedback(
-            component="default",
+            component="thumbs",
             model="NA",
             feedback_type="thumbs",
         )
         collector.st_feedback(
-            component="default",
+            component="text",
             model="NA",
             feedback_type="textbox",
             open_feedback_label="Additional feedback or suggestions",
