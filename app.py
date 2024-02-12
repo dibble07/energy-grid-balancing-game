@@ -3,6 +3,7 @@ import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
+from trubrics.integrations.streamlit import FeedbackCollector
 
 from src.grid import Grid
 from src.generators import (
@@ -46,6 +47,13 @@ with spare_tab:
     spare_chart_cont = st.empty()
 with battery_soc_tab:
     battery_soc_chart_cont = st.empty()
+
+# initialise feedback collector
+collector = FeedbackCollector(
+    project="energy-grid-balancing-game",
+    email=st.secrets.TRUBRICS_EMAIL,
+    password=st.secrets.TRUBRICS_PASSWORD,
+)
 
 # initialise values and state parameters
 display_cost_order = ["capex", "opex", "carbon_tax", "social_carbon_cost"]
@@ -106,6 +114,19 @@ with sidebar:
         week_dt = st.selectbox(
             " ", week_map["date"].values, index=st.session_state["week_ind"]
         )
+    with st.expander("Feedback", expanded=True):
+        collector.st_feedback(
+            component="default",
+            model="NA",
+            feedback_type="thumbs",
+        )
+        collector.st_feedback(
+            component="default",
+            model="NA",
+            feedback_type="textbox",
+            open_feedback_label="Additional feedback or suggestions",
+        )
+
 st.session_state["week_ind"] = int(week_map.loc[week_map["date"] == week_dt].index[0])
 week_no = week_map.loc[st.session_state["week_ind"], "week"]
 
