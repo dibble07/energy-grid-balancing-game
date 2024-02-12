@@ -22,6 +22,7 @@ jupyter = "^1"
 ipywidgets = "^8"
 seaborn = "^0"
 pqdm = "^0"
+trubrics = {extras = ["streamlit"], version = "^1"}
 
 [tool.poetry.group.dev.dependencies]
 icecream = "^2"
